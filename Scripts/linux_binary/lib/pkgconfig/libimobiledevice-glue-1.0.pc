@@ -1,0 +1,11 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libimobiledevice-glue
+Description: Common library for libimobiledevice and co.
+Version: 1.2.0
+Libs: -L${libdir} -limobiledevice-glue-1.0
+Cflags: -I${includedir}
+Requires: libplist-2.0 >= 2.3.0
