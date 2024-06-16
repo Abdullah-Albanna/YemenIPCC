@@ -1,6 +1,13 @@
-from .projectimports import tk, ctypes, platform
+from .projectimports import (tk, ctypes, platform)
+from .logging_config import setupLogging
+import logging
+
+
+setupLogging(debug=True, file_logging=True)
+
 
 def setDpiAwareness():
+
     if platform.system() == "Windows":
         try:
             # Try to set the DPI awareness for the application (Windows 8.1 and later)
@@ -10,12 +17,13 @@ def setDpiAwareness():
                 # For older versions of Windows
                 ctypes.windll.user32.SetProcessDPIAware()
             except Exception as e:
-                print(f"Could not set DPI awareness: {e}")
+                logging.error(f"fixing_the_window.py - Could not set DPI awareness: {e}")
     else:
         pass
 
 
 def centerWindow(window: tk.Tk) -> None:
+
     """
     Center the window on the screen.
 
@@ -39,9 +47,11 @@ def centerWindow(window: tk.Tk) -> None:
     
     # Set window position
     window.geometry(f"+{x}+{y}")
+
     setDpiAwareness()
 
 def showWindow(window: tk.Tk) -> None:
+
     """
     Show the window.
 
@@ -51,6 +61,7 @@ def showWindow(window: tk.Tk) -> None:
     window.deiconify()
 
 def initialize(window: tk.Tk) -> None:
+    
     """
     Initialize the window by centering it and showing it after a delay.
 
