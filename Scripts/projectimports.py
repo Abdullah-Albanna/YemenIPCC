@@ -4,11 +4,11 @@ import subprocess
 import tkinter as tk
 from tkinter import messagebox, font
 from tkinter.ttk import Progressbar
-from tempfile import TemporaryDirectory, gettempdir
+from tempfile import gettempdir, TemporaryDirectory
 import os 
 from time import sleep 
-from threading import Thread
-from typing import Tuple, Dict, List, Union, Any
+from threading import Thread, Event
+from typing import Dict, List, Any, Union, Tuple, Callable, Optional
 import socket
 import platform
 import requests
@@ -17,9 +17,16 @@ import sys
 import shutil
 from functools import cache
 import ctypes
+from pathlib import Path
+import argparse
+import logging
+import aiohttp
+import asyncio
+import textwrap
+from contextlib import contextmanager
 
-from .updating_status import DeviceManager, DPIResize
-from .changing_option import VariableManager
+from .updating_status import DPIResize, DeviceManager
+from .logging_config import logging
 
 
 
@@ -31,8 +38,18 @@ if dsystem == "Darwin":
 else:
     system = dsystem
 
-
 # Reused functions:
+
+@contextmanager
+def managedProcess(*args, **kwargs):
+    process = subprocess.Popen(*args, **kwargs)
+    try:
+        yield process
+    except Exception as e:
+        logging.error(f"updating_status.py - An error occurred in the managedProcess, error: {e}")
+    finally:
+        process.terminate()
+        process.wait()
 
 def getAppDirectory() -> str:
     if getattr(sys, 'frozen', False):
@@ -78,9 +95,9 @@ def getLinuxDefaultFont():
 
     try:
         # Get the list of running processes
-        process = subprocess.Popen(["ps", "-e", "-o", "comm="], stdout=subprocess.PIPE)
-        stdout, _ = process.communicate()
-        running_processes = stdout.decode().splitlines()
+        with managedProcess(["ps", "-e", "-o", "comm="], stdout=subprocess.PIPE) as process:
+            stdout, _ = process.communicate()
+            running_processes = stdout.decode().splitlines()
 
         # Check for known processes
         for de, processes in de_processes.items():
