@@ -5,8 +5,9 @@ from Scripts.injection import (injection, disableIfRunning)
 from Scripts.updating_status import (updateButtonStateThreaded, updateLabelStateThreaded)
 from Scripts.main_window import (logText, radioButtons, frames, windowCreation, menuBarCreation)
 from Scripts.thread_starter import startThread
+from Scripts.set_exec_perm import setExecutePermission
 
-from Scripts.projectimports import (tk, List, os, platform, family_font, gettempdir, font, messagebox, sleep, getAppDirectory, DPIResize, Path, managedProcess, subprocess)
+from Scripts.projectimports import (tk, List, os, platform, family_font, gettempdir, font, messagebox, sleep, getAppDirectory, DPIResize, Path, managedProcess, glob)
 from Scripts.logging_config import setupLogging
 import logging
 
@@ -190,6 +191,13 @@ if __name__ == "__main__":
 
     with open(os.path.join(".", "__version__"), 'w') as file:
         file.write(current_version)
+        
+
+    pattern = os.path.join(".", "Scripts", "*_binary")
+    matching_folders = glob.glob(pattern)
+    for i in matching_folders:
+        if not "windows_binary" in i: # not necessary for windows
+            setExecutePermission(i)
 
 
     main()
