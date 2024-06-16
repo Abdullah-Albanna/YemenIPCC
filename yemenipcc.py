@@ -194,10 +194,13 @@ if __name__ == "__main__":
         
 
     pattern = os.path.join(".", "Scripts", "*_binary")
-    matching_folders = glob.glob(pattern)
-    for i in matching_folders:
-        if not "windows_binary" in i: # not necessary for windows
-            setExecutePermission(i)
+    for folder_path in matching_folders:
+        if not "windows_binary" in folder_path : # not necessary for windows
+            if "mac_binary" in folder_path and system != "Darwin":
+                continue
+            elif "linux_binary" in folder_path and system != "Linux":
+                continue
+            setExecutePermission(folder_path)
 
 
     main()
