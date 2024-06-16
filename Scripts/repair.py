@@ -1,5 +1,10 @@
-from .projectimports import (subprocess, tk, messagebox, system, Union, sleep, Thread, os)
+from .projectimports import (subprocess, tk, messagebox, system, os, sleep, managedProcess, Union)
+from .thread_starter import startThread
+from .logging_config import setupLogging
+import logging
 
+
+setupLogging(debug=True, file_logging=True)
 
 # What these three do is specifing the executeable binary for each system so the user do not have to install anything
 if system == "Mac":
@@ -32,6 +37,7 @@ elif system == "Windows":
     }
 
 if system != "Windows":
+
     args = {
             'stdout': subprocess.PIPE,
             'stderr': subprocess.PIPE,
@@ -41,6 +47,7 @@ if system != "Windows":
 
 
 def validateDevice() -> Union[str, bool]:
+
     """
     Validate the device connection.
 
@@ -49,21 +56,21 @@ def validateDevice() -> Union[str, bool]:
     """
     try:
     
-        validate = subprocess.Popen([idevicepair, "validate"], **args)
-        stdout = validate.communicate()[0]
-        stderr = validate.communicate()[1]
-        ressult = stdout + stderr
-        if "Please enter the passcode on the device and retry" in ressult:
+        with managedProcess([idevicepair, "validate"], **args) as validate:
+            stdout = validate.communicate()[0]
+            stderr = validate.communicate()[1]
+            result = stdout + stderr
+        if "Please enter the passcode on the device and retry" in result:
             return "passcode"
-        elif "Please accept the trust dialog on the screen of device" in ressult:
+        elif "Please accept the trust dialog on the screen of device" in result:
             return "accept"
-        elif "Validated pairing with device" in ressult:
+        elif "Validated pairing with device" in result:
             return True
-        elif "Device validation failed: unhandled error code -5" in ressult:
+        elif "Device validation failed: unhandled error code -5" in result:
             return False
-        elif "Please enter the passcode on the device and retry" in ressult:
+        elif "Please enter the passcode on the device and retry" in result:
             return False
-        elif "said that the user denied the trust dialog." in ressult:
+        elif "said that the user denied the trust dialog." in result:
             return "denied"
 
     except subprocess.CalledProcessError as e:
@@ -72,6 +79,7 @@ def validateDevice() -> Union[str, bool]:
         print(error_message)
 
 def repairiPhone(log_text) -> None:
+
     """
     Re-pair the iPhone connection.
 
@@ -83,19 +91,20 @@ def repairiPhone(log_text) -> None:
         return
     
     # Unpair the iPhone
-    unpair_process = subprocess.Popen([idevicepair, "unpair"], **args)
-    stdout = unpair_process.communicate()[0]
-    stderr = unpair_process.communicate()[1]
-    result = stdout + stderr
+    with managedProcess([idevicepair, "unpair"], **args) as unpair_process:
+        stdout = unpair_process.communicate()[0]
+        stderr = unpair_process.communicate()[1]
+        result = stdout + stderr
 
     # To avoid it logging "No Device found." twice
     if "No device found, is it plugged in?" in result or "No device found." in result:
-        Thread(target=lambda: pairAndCheck(log_text), daemon=True).start()
+        startThread(lambda: pairAndCheck(log_text), "pairAndCheck", logging)
         return
 
     if "SUCCESS: " in result:
         color = "green"
     elif "ERROR: " in result:
+        logging.error(f"repair.py - An error occurred in the repairiPhone(), error result: {result}")
         color = "red"
     elif "No device found.":
         color = "red"
@@ -106,11 +115,13 @@ def repairiPhone(log_text) -> None:
     log_text.tag_configure(color, foreground=color)
     log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
     log_text.insert(tk.END, f"\n{result}\n", color)
+    log_text.see(tk.END)
 
     # Start a thread to pair the iPhone again and check the validation
-    Thread(target=lambda: pairAndCheck(log_text), daemon=True).start()
+    startThread(lambda: pairAndCheck(log_text), "pairAndCheck", logging)
 
 def pairAndCheck(log_text) -> None:
+    
     """
     Pair the iPhone and check validation.
 
@@ -120,14 +131,15 @@ def pairAndCheck(log_text) -> None:
     # Keep trying to pair the iPhone and check validation
     while True:
         # Pair the iPhone
-        pair = subprocess.Popen([idevicepair, "pair"], **args)
-        stdout = pair.communicate()[0]
-        stderr = pair.communicate()[1]
-        result = stdout + stderr
+        with managedProcess([idevicepair, "pair"], **args) as pair:
+            stdout = pair.communicate()[0]
+            stderr = pair.communicate()[1]
+            result = stdout + stderr
 
         if "SUCCESS: " in result:
             color = "green"
         elif "ERROR: " in result:
+            logging.error(f"repair.py - An error occurred in the pairAndCheck(), error result: {result}")
             color = "red"
         elif "No device found.":
             color = "red"
@@ -138,6 +150,7 @@ def pairAndCheck(log_text) -> None:
         log_text.tag_configure(color, foreground=color)
         log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
         log_text.insert(tk.END, f"\n{result}\n", color)
+        log_text.see(tk.END)
 
         # If pairing is successful, break the loop
         if "SUCCESS: Paired with device" in result:
@@ -149,8 +162,10 @@ def pairAndCheck(log_text) -> None:
         elif "No device found." in result:
             break
         elif "symbol lookup error" in result:
+            logging.critical(f"repair.py - An error occurred, possibly library error, error: {result}")
             break
         elif "lockdownd_pair_cu" in result:
+            logging.critical(f"repair.py - An error occurred, possibly library error, error: {result}")
             break
 
 
