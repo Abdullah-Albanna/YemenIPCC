@@ -1,12 +1,25 @@
-from .projectimports import (tk, sleep, Thread, Tuple, Dict, List, subprocess, platform, os, cache)
-from .changing_option import VariableManager
+from .projectimports import (tk, Dict, List, subprocess, platform, os, cache, sleep, Tuple, contextmanager)
+from .variables_manager import VariableManager
+from .thread_starter import startThread
+from .logging_config import setupLogging
+import logging
+
+
+setupLogging(debug=True, file_logging=True)
+
+try:
+    temp_variables = VariableManager().loadTempVariables()
+except Exception as e:
+    logging.error("injection.py - Could not load the saved variables")
 
 dsystem = platform.system()
 
 # Used to change the "Darwin" to "Mac" because it is known better in Mac not Darwin
 if dsystem == "Darwin":
+
     system: str = "Mac"
 else:
+
     system = dsystem
     
 # What these three do is specifing the executeable binary for each system so the user do not have to install anything
@@ -44,6 +57,7 @@ elif system == "Windows":
     }
 
 if system != "Windows":
+
     args = {
             'stdout': subprocess.PIPE,
             'stderr': subprocess.PIPE,
@@ -51,40 +65,78 @@ if system != "Windows":
             'env': env
         }
 
-
+@contextmanager
+def managedProcess(*args, **kwargs):
+    process = subprocess.Popen(*args, **kwargs)
+    try:
+        yield process
+    except Exception as e:
+        logging.error(f"updating_status.py - An error occurred in the managedProcess, error: {e}")
+    finally:
+        process.terminate()
+        process.wait()
 
 @cache
 def cachedDPIAndRes():
+
+    checked_the_dpi = False
     window = tk.Tk()
     dpi = window.winfo_fpixels('1i')
+    if not checked_the_dpi:
+        logging.info(f"updating_status.py - DPI: {dpi}")
+        checked_the_dpi = True
     screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
     window.destroy()
     return dpi, screen_width
 
 def DPIResize(size) -> int:
+
     """Get the screen DPI and screen resolution using Tkinter, and convert the font size to be suitable for it"""
     if system == "Mac":
         # Macs are known to use 72
         sysdpi = 72
+
     else:
+
         sysdpi = 96
-    dpi, screen_width = cachedDPIAndRes()\
-    
+    dpi, screen_width = cachedDPIAndRes()
     if 1366 <= screen_width < 1600:
         sysdpi+=12
+
     elif 1280 <= screen_width < 1366:
         sysdpi+=23
+
     elif 1024 <= screen_width < 1280:
         sysdpi+=50
 
     scale_factor = dpi / sysdpi
     return round(int(size * scale_factor))
 
+def setRunning(value: bool) -> None:
+    global running
+    running = value
+    temp_variables['running'] = running
+    VariableManager().saveVariables(temp_variables)
 
+def saveVariableInfo(variable_name, variable_info):
+        # Load existing variables from the text file
+    try:
+        temp_variables = VariableManager().loadTempVariables()
+    except Exception as e:
+        logging.error(f"updating_status.py - Could not load the saved bundle variables, error: {e}")
+
+    # Update or add the selected bundle name to the saved variables
+    temp_variables[f'{variable_name}'] = variable_info
+    
+    # Save the updated variables to the text file
+    try:
+        VariableManager().saveVariables(temp_variables)
+    except Exception as e:
+        logging.error(f"updating_status.py - Could not save bundle option, error: {e}")
     
 # A class to control the iPhone
 class DeviceManager:
+
     def __init__(self, window=None, frame=None, button=None, log_text=None, Stats=None):
         self.window: tk.Tk = window
         self.frame: tk.Frame = frame
@@ -94,40 +146,68 @@ class DeviceManager:
         self.iPhoneType: tk.Label = None
         self.iPhoneVersion: tk.Label = None
         self.disconnected_label: tk.Label = None
-        # self.app_font = app_font
+        self.logged_product_type: str = ""
+        self.logged_product_version: str = ""
+        self.logged_errors = set()
     
     # Check if the device is really paired 
     def validateDevice(self) -> bool:
+
         try:
             # Runs ideviceinfo, which is used to get the iPhone information, and catch the errors, if there is no, then it is good to go
-            subprocess.Popen([ideviceinfo], **args)
+            with managedProcess([ideviceinfo], **args):
+                pass
             return True
         except subprocess.CalledProcessError as e:
             error_message: str = e.stderr.strip()
+            logging.error(f"updating_status.py - An error occurred in the validation of the device, error: {error_message}")
             if "Could not connect to lockdownd: SSL error (-5)" in error_message:
                 return False
             elif "Device validation failed: unhandled error code -5" in error_message:
                 self.Stats.config(text="Please Reconnect the USB and Trust Again", fg="red")
                 return False
             
-
+    
     # Extracts some information about the connected device
     def extractValuesFromLog(self) -> Tuple[int, str]:
+
         product_version: int = ""
         product_type: str = ""
         try:
             # -s is short for "short", maybe
-            device_info = subprocess.Popen([ideviceinfo, "-s"], **args)
-            stdout = device_info.communicate()[0]
-            stderr = device_info.communicate()[1]
-            output_lines: List[str] = stdout.splitlines() + stderr.splitlines()
+            with managedProcess([ideviceinfo, "-s"], **args) as device_info:
+                stdout = device_info.communicate()[0]
+                stderr = device_info.communicate()[1]
+                output_lines: List[str] = stdout.splitlines() + stderr.splitlines()
+                if stderr != "":
+                    logging.warning(f"updating_status.py - An error occurred in the extraction of the idevoce info, error: {stderr}")
 
             # This one look for the iPhone type and its version, and saves it to the above variables
             for line in output_lines:
                 if "ProductVersion:" in line:
-                    product_version = line.split("ProductVersion:")[1].strip() # The "1" if for the whitespace
-                elif "ProductType:" in line:
+                    product_version = line.split("ProductVersion:")[1].strip() # The "1" is for the whitespace
+                    
+                if "ProductType:" in line:
                     product_type = line.split("ProductType:")[1].strip()
+
+
+            saveVariableInfo("iPhone_version", product_version)
+            saveVariableInfo("iPhone_model", product_type)
+
+            # This to make sure to show the iPhone information only once a plug
+            if self.checkIfPlugged():
+
+                if self.logged_product_type != product_type:
+                    logging.info(f"updating_status.py - iPhone model: {product_type}")
+                    self.logged_product_type = product_type
+
+                if self.logged_product_version != product_version:
+                    logging.info(f"updating_status.py - iPhone version: {product_version}")
+                    self.logged_product_version = product_version
+
+            else:
+                self.logged_product_version = ""
+                self.logged_product_type = ""
 
             # Creating a dictionary to convert machine id to a known name, used then for displaying what iPhone is connected 
             product_type_mappings: Dict[str, str] = {
@@ -162,22 +242,34 @@ class DeviceManager:
 
             product_type = product_type_mappings.get(product_type, "Unsupported")
 
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as subpe:
             # Catching the error of the ideviceinfo, if it has errors then it is probably not trusted
+            logging.warning(f"updating_status.py - An error occurred, trust error, error: {subpe}")
             self.log_text.tag_configure("red", foreground="red")
             self.log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
             self.log_text.insert(tk.END, f"\nCommand 'ideviceinfo -s' returned non-zero exit status\n", "red")
+            self.log_text.see(tk.END)
             self.Stats.config(text="Please Trust this Computer", fg="green")
-            subprocess.Popen([f"{idevicepair}", "pair"], **args)
+            with managedProcess([f"{idevicepair}", "pair"], **args):
+                pass
 
         return product_version, product_type
 
     # Checks if the device is plugged or not
     def checkIfPlugged(self) -> bool:
+
         try:
             # This prints the iPhone id, whether it is trusted or not, which is good, we only want to know if it plugged or not
-            result = subprocess.Popen([idevice_id, "-l"], **args)
-            stdout = result.communicate()[0]
+            with managedProcess([idevice_id, "-l"], **args) as result:
+                stdout = result.communicate()[0]
+                stderr = result.communicate()[1]
+
+            if stderr:
+                if "Unable to retrieve device list!" not in stderr:
+                    if stderr not in self.logged_errors:
+                        logging.error(f"updating_status.py - An error occurred in the checkIfPlugged, error: {stderr}")
+                        self.logged_errors.add(stderr)
+
             return bool(stdout.strip())
         except subprocess.CalledProcessError as e:
             return False
@@ -185,6 +277,7 @@ class DeviceManager:
 
     # Updates the button state, if the device is plugged it gets enabled, if not then no, if plugged and the injection is running then no
     def updateButtonState(self) -> None:
+
         while True:
             plugged = self.checkIfPlugged()
             running = self.getRunningStatus()
@@ -199,7 +292,8 @@ class DeviceManager:
 
     # Same thing, but a bit more
     def updateLabelState(self) -> None:
-        while True:
+
+        while True:  
             plugged = self.checkIfPlugged()
 
             # if it is plugged and returns False on the validation, we need to trust the device
@@ -207,31 +301,44 @@ class DeviceManager:
                 self.log_text.tag_configure("red", foreground="red")
                 self.log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
                 self.log_text.insert(tk.END, f"\nDevice validation failed: unhandled error code -5\n", "red")
+                self.log_text.see(tk.END)
                 self.Stats.config(text="Please Reconnect the USB and Trust", fg="red")
                 sleep(1)
-                subprocess.Popen([f'{idevicepair}', 'pair'], **args)
+                with managedProcess([f'{idevicepair}', 'pair'], **args):
+                    pass
                 sleep(1)
 
             if plugged:
-                self.Stats.config(text="Connected", fg="green")
-
                 # We don not want thoes to be global from the extractValuesFromLog because we need to to repeatedly know what device is connected
                 product_version, product_type = self.extractValuesFromLog()
+
+                self.Stats.config(text="Connected", fg="green")        
 
                 # Because this function is in a while loop, we need a way of handling the labels from repeating and going on a long line 
                 if not self.iPhoneType: # This is like if the label is not empty, clear it
                     self.iPhoneType = tk.Label(self.frame, font=("Consolas", DPIResize(18)), bg="#030b2c", fg="white")
                     self.iPhoneType.pack()
-                self.iPhoneType.config(text=f"iPhone Type: {product_type}") # Then fill it again
+                
+                if product_type != "Unsupported":
+                    self.iPhoneType.config(text=f"iPhone Type: {product_type}") # Then fill it again
+                else:
+                    self.iPhoneType.config(text=f"Unsupported", fg="grey", font=("Consolas", DPIResize(20)))
+                    setRunning(True)
 
                 if not self.iPhoneVersion: # Same and so as the other
                     self.iPhoneVersion = tk.Label(self.frame, font=("Consolas", DPIResize(20)), bg="#030b2c", fg="white")
-                    self.iPhoneVersion.pack()
-                self.iPhoneVersion.config(text=f"iPhone Version: {product_version}")
+                    self.iPhoneVersion.pack(fill="both")
+                
+                if product_type != "Unsupported":
+                    self.iPhoneVersion.config(text=f"iPhone Version: {product_version}")
+                else:
+                    self.iPhoneVersion.config(text=f"Your Device Does not Need\n IPCC Files", fg="yellow")
 
                 if self.disconnected_label:
                     self.disconnected_label.pack_forget()
                     self.disconnected_label = None
+
+                    
             else:
                 self.Stats.config(text="Disconnected", fg="red")                       # Same logic 
                 if self.iPhoneType:
@@ -247,10 +354,11 @@ class DeviceManager:
 
             sleep(0.3)
             self.window.update_idletasks() # And finally updates the window
-            
+
     def getRunningStatus(self) -> bool:
-        saved_variables = VariableManager().loadSavedVariables()
-        running = saved_variables.get('running', 'False')
+
+        temp_variables = VariableManager().loadTempVariables()
+        running = temp_variables.get('running', 'False')
         if running == "False":
             return False
         elif running == "True":
@@ -260,8 +368,10 @@ class DeviceManager:
 
 # Both has to be running from here, if you don't, you'll get weird behavior
 def updateButtonStateThreaded(window: tk.Tk, frame: tk.Frame, button: tk.Button, log_text: tk.Text, Stats: tk.Label) -> None:
-    Thread(target=lambda: DeviceManager(window, frame, button, log_text, Stats).updateButtonState(), daemon=True).start()
+
+    startThread(lambda: DeviceManager(window, frame, button, log_text, Stats).updateButtonState(), "updateButtonStateThreaded", logging)
     
 
 def updateLabelStateThreaded(window: tk.Tk, frame: tk.Frame, button: tk.Button, log_text: tk.Text, Stats: tk.Label) -> None:
-    Thread(target=lambda: DeviceManager(window, frame, button, log_text, Stats).updateLabelState(), daemon=True).start()
+    
+    startThread(lambda: DeviceManager(window, frame, button, log_text, Stats).updateLabelState(), "updateLabelStateThreaded" ,logging)
