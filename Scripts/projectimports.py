@@ -24,6 +24,7 @@ import aiohttp
 import asyncio
 import textwrap
 from contextlib import contextmanager
+import glob
 
 from .updating_status import DPIResize, DeviceManager
 from .logging_config import logging
