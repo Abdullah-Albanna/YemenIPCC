@@ -1,8 +1,14 @@
-from .projectimports import (sleep, messagebox, requests, webbrowser,
-                            Union, socket, system)
+from .projectimports import (messagebox, requests, webbrowser, socket, system, sleep, Union)
+from .logging_config import setupLogging
+import logging
+
+
+setupLogging(debug=True, file_logging=True)
+
 
 
 def checkInternetConnection() -> bool:
+
     """
     Check internet connection by creating a socket connection to a well-known IP address.
 
@@ -12,11 +18,15 @@ def checkInternetConnection() -> bool:
     try:
         socket.create_connection(("8.8.8.8", 53), timeout=3)
         return True
-    except OSError:
+    except OSError as oser:
+        logging.warning(f"check_for_update.py - Something gone wrong in checking for the internet conectivity, error: {oser}")
         pass
+    logging.warning("check_for_update.py - There is no internet")
     return False
 
+
 def checkForUpdate(current_version: str) -> Union[bool, str]:
+
     """
     Check for updates of the YemenIPCCProject app.
 
@@ -50,7 +60,8 @@ def checkForUpdate(current_version: str) -> Union[bool, str]:
                 size: int = asset['size']
                 message: str = release['body']
 
-                if latest_version == current_version:
+                if latest_version == current_version or latest_version < current_version:
+                    logging.info("check_for_update.py - There is no update")
                     return "No Update"
                 
                 size_mb: int = round(size / (1024 * 1024), 2)
@@ -62,15 +73,18 @@ def checkForUpdate(current_version: str) -> Union[bool, str]:
                 )
 
                 if not messagebox.askyesno("Update Available", update_message):
+                    logging.info("check_for_update.py - User declined the update")
                     return False
                 
                 download_url: str = release['html_url']
                 webbrowser.open_new_tab(download_url)
+                logging.info("check_for_update.py - User accepted the update")
                 return True
             
 
 
 def checkForUpdateButton(current_version: str) -> None:
+    
     """
     This is mainly for the tools -> check for update button.
     
@@ -81,6 +95,6 @@ def checkForUpdateButton(current_version: str) -> None:
     """
     update_result = checkForUpdate(current_version)
     if update_result == "No Update":
-        messagebox.showinfo("Check for Update", "Yemen IPCC app is up-to-date")
+        messagebox.showinfo("Check for Update", "Yemen IPCC is up-to-date")
     elif update_result == "No Internet":
         messagebox.showerror("Error", "Please connect to the internet first")
