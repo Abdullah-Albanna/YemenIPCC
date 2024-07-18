@@ -1,85 +1,81 @@
-from .projectimports import (messagebox, requests, webbrowser, socket, system, sleep, Union)
-from .logging_config import setupLogging
-import logging
+from . import (
+    messagebox, requests, webbrowser, 
+    Union, 
+    logger,
+    sleep
+    )
+from .check_for_internet import checkInternetConnection
+from .get_system import system
 
-
-setupLogging(debug=True, file_logging=True)
-
-
-
-def checkInternetConnection() -> bool:
-
-    """
-    Check internet connection by creating a socket connection to a well-known IP address.
-
-    Returns:
-        bool: True if internet connection is available, False otherwise.
-    """
-    try:
-        socket.create_connection(("8.8.8.8", 53), timeout=3)
-        return True
-    except OSError as oser:
-        logging.warning(f"check_for_update.py - Something gone wrong in checking for the internet conectivity, error: {oser}")
-        pass
-    logging.warning("check_for_update.py - There is no internet")
-    return False
-
-
-def checkForUpdate(current_version: str) -> Union[bool, str]:
-
+def checkForUpdate(current_version: str, max_length: int = 30) -> Union[bool, str]:
     """
     Check for updates of the YemenIPCCProject app.
 
     Args:
         current_version (str): The current version of the app.
+        max_length (int): Maximum number of lines to display in the message.
+
     Returns:
         Union[bool, str]: True if an update is available and user chooses to update,
-        
                           False if there is no update available or there's an error fetching updates,
-
-                          "No Internet" if there's no internet connection.
-
-                          "No Update" if there is no new updates
+                          "No Internet" if there's no internet connection,
+                          "No Update" if there is no new updates.
     """
     if not checkInternetConnection():
         return "No Internet"
     
     sleep(1)
-    repo_url: str = 'https://api.github.com/repos/Abdullah-Albanna/YemenIPCC/releases'
-    response = requests.get(repo_url)
-    response.raise_for_status()
+    repo_url = 'https://api.github.com/repos/Abdullah-Albanna/YemenIPCC/releases'
+    try:
+        response = requests.get(repo_url)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        logger.error(f"Error fetching update information: {e}")
+        return False
 
-    releases_info: list = response.json()
+    releases_info = response.json()
 
-    # Checks if there is an update for the current device using the github api, not the best way to write, but alright
     for release in releases_info:
         for asset in release["assets"]:
-
+            # Adjusted to match with system in asset name (assuming 'system' is defined somewhere)
             if system in asset['name']:
-                latest_version: str = release['tag_name']
-                size: int = asset['size']
-                message: str = release['body']
+                latest_version = release['tag_name']
+                size = asset['size']
+                message = release['body']
 
                 if latest_version == current_version or latest_version < current_version:
-                    logging.info("check_for_update.py - There is no update")
+                    logger.info("There is no update")
                     return "No Update"
+                else:
+                    logger.info(f"There is a new update, version: {latest_version}")
                 
-                size_mb: int = round(size / (1024 * 1024), 2)
+                # Calculate number of lines in the message
+                lines = len(message.splitlines())
+
+                # Crop the message if it exceeds max_length lines
+                if lines > max_length:
+                    message_lines = '\n'.join(message.splitlines()[:max_length]) + "... Click Yes to Read the Rest"
+                else:
+                    message_lines = message
+
+                size_mb = round(size / (1024 * 1024), 2)
                 update_message = (
                     f"A new version ({latest_version}) is available!\n"
                     f"Do you want to update?\n\n"
-                    f"Size: {str(size_mb)} MB\n\n"
-                    f"Message:\n{message}"
+                    f"Size: {size_mb} MB\n\n"
+                    f"Message:\n{message_lines}"
                 )
 
                 if not messagebox.askyesno("Update Available", update_message):
-                    logging.info("check_for_update.py - User declined the update")
+                    logger.info("User declined the update")
                     return False
                 
-                download_url: str = release['html_url']
+                download_url = release['html_url']
                 webbrowser.open_new_tab(download_url)
-                logging.info("check_for_update.py - User accepted the update")
+                logger.info("User accepted the update")
                 return True
+
+    return "No Update"
             
 
 
