@@ -1,4 +1,9 @@
 requests
 typing
-tk # can be installed with "brew install python-tk" if you are on a mac
-cryptography
+aiohttp
+loguru
+tk; sys_platform != 'darwin' # if in a mac, it can be installed with (brew install python-tk)
+ttwidgets; sys_platform == 'darwin'
+pywin32; sys_platform == 'win32'
+colorama; sys_platform == 'win32'
+thread==2.0.5
