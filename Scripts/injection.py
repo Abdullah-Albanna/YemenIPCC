@@ -1,122 +1,35 @@
-from .projectimports import (subprocess, tk, os, List, messagebox, system, new_iPhone_message, new_iPhones, aiohttp, asyncio, textwrap,
-                            DPIResize, sleep, managedProcess,
-                            Progressbar, DeviceManager, TemporaryDirectory, Thread, Event)
+from . import (
+    subprocess, tk, os,  messagebox, aiohttp, asyncio, textwrap, 
+    Progressbar, Style, TemporaryDirectory, Event,
+    List, new_iPhone_message, new_iPhones,
+    sleep
+                            )
 from .variables_manager import VariableManager
 from .thread_starter import startThread
-from .check_for_update import checkInternetConnection
-from .logging_config import setupLogging
-import logging
+from .check_for_internet import checkInternetConnection
+from .logger_config_class import YemenIPCCLogger
+from .send_data import sendData
+from .get_bin_path import BinaryPaths
+from .managed_process import managedProcess
+from .resize_dpi import DPIResize
+from .updating_status import DeviceManager
+from .thread_terminator_var import terminate
 
 
-setupLogging(debug=True, file_logging=True)
+logger = YemenIPCCLogger().logger
+bin_paths = BinaryPaths().getPaths()
 
-# Load existing variables from the text file
-try:
-    temp_variables = VariableManager().loadTempVariables()
-except Exception as e:
-    logging.error(f"injection.py - Could not load the saved variables, error:{e}")
-
-# Set initial running state
-try:
-    running: bool = temp_variables.get('running', False)
-except Exception as e:
-    logging.error("injection.py - Could not get the running status from the chache file")
-
-# What these three do is specifing the executeable binary for each system so the user do not have to install anything
-if system == "Mac":
-  
-    # This sets the library looking path to the project's library, again, to make the user not install anything
-    os.environ['DYLD_LIBRARY_PATH'] = "./Scripts/mac_binary/lib:$DYLD_LIBRARY_PATH"
-
-    # Copies the path so it could be passed to the subprocesses
-    env = os.environ.copy()
-
-    ideviceinfo: str = "./Scripts/mac_binary/ideviceinfo" 
-    ideviceinstaller: str = "./Scripts/mac_binary/ideviceinstaller"
-    idevicediagnostics: str = "./Scripts/mac_binary/idevicediagnostics"
-    idevicesyslog: str = "./Scripts/mac_binary/idevicesyslog"
-    
-if system == "Linux":
-
-    # The same, but only change the env variable for linux
-    os.environ['LD_LIBRARY_PATH'] = './Scripts/linux_binary/lib:$LD_LIBRARY_PATH'
-    env = os.environ.copy()
-
-    ideviceinfo: str = "./Scripts/linux_binary/ideviceinfo"
-    ideviceinstaller: str = "./Scripts/linux_binary/ideviceinstaller"
-    idevicediagnostics: str = "./Scripts/linux_binary/idevicediagnostics"
-    idevicesyslog: str = "./Scripts/linux_binary/idevicesyslog"
-
-elif system == "Windows":
-    
-    ideviceinfo: str = ".\\Scripts\\windows_binary\\ideviceinfo.exe"
-    ideviceinstaller: str = ".\\Scripts\\windows_binary\\ideviceinstaller.exe"
-    idevicediagnostics: str = ".\\Scripts\\windows_binary\\idevicediagnostics.exe"
-    idevicesyslog: str = ".\\Scripts\\windows_binary\\idevicesyslog.exe"
-    env = os.environ.copy()
-
-    # Adds the CREATE_NO_WINDOW for windows (hides the terminal)
-    args = {
-        'stdout': subprocess.PIPE,
-        'stderr': subprocess.PIPE,
-        'text': True,
-        'env': env,
-        'creationflags': subprocess.CREATE_NO_WINDOW
-    }
-
-# Don't for others, not needed for them and not even avaliable
-if system != "Windows":
-
-    args = {
-            'stdout': subprocess.PIPE,
-            'stderr': subprocess.PIPE,
-            'text': True,
-            'env': env
-        }
-    
-# Update the running state and save to the file
-def setRunning(value: bool) -> None:
-
-    global running
-    running = value
-    # Load existing variables from the text file
-    try:
-        saved_variables = VariableManager().loadTempVariables()
-    except Exception as e:
-        logging.error(f"injection.py - Could not load the saved variables, error:{e}")
-    saved_variables['running'] = running
-    VariableManager().saveVariables(saved_variables)
-
-# Get the current running state
-def getRunning() -> bool:
-
-    global running
-    # Load existing variables from the text file
-    try:
-        saved_variables = VariableManager().loadTempVariables()
-    except Exception as e:
-        logging.error(f"injection.py - Could not load the saved variables, error:{e}")
-    running = saved_variables.get('running', "False")
-    if running == "False":
-        return False
-    elif running == "True":
-        return True
-    
-def getValidate() -> bool:
-    # Load existing variables from the text file
-    try:
-        saved_variables = VariableManager().loadTempVariables()
-    except Exception as e:
-        logging.error(f"injection.py - Could not load the saved variables, error:{e}")
-
-    validate = saved_variables.get('validate', "True")
-    if validate == "False":
-        return False
-    elif validate == "True":
-        return True
+ideviceinfo = bin_paths["ideviceinfo"]
+ideviceinstaller = bin_paths["ideviceinstaller"]
+idevicediagnostics = bin_paths["idevicediagnostics"]
+idevicesyslog = bin_paths["idevicesyslog"]
+args = bin_paths["args"]
 
     
-def read_syslog(log_queue, stop_event):
+def readSysLog(log_queue, stop_event) -> None:
+    """
+    Reads the iPhone system logs to decide the result of the injection process
+    """
     syslog_process = subprocess.Popen([idevicesyslog], **args, universal_newlines=True)
     try:
         while not stop_event.is_set():
@@ -128,9 +41,14 @@ def read_syslog(log_queue, stop_event):
     finally:
         syslog_process.terminate()
         syslog_process.wait()
+        logger.debug("Stoppted readSysLog")
 
-async def isFileDownloadable(url):
+async def isFileDownloadable(url) -> bool:
+    """
+    Checks if the file exists or not by testing the downloading ability
+    """
     try:
+        # We well use aiohttp with async to get the fastest result
         async with aiohttp.ClientSession() as session:
             async with session.head(url, allow_redirects=True) as response:
                 # Check if the request was successful
@@ -150,38 +68,36 @@ async def isFileDownloadable(url):
                     return True
                 
                 # If there is no Content-Disposition header, infer from content type
-                if content_type in ['application/octet-stream', 'application/pdf', 'application/zip']:
+                if content_type in ['application/octet-stream', 'application/zip']:
                     return True
 
                 return False
     except aiohttp.ClientError as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
         return False
 
-def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: str, selected_which_one: str, app_font) -> None:
+def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: str, selected_container: str, app_font) -> None:
     
     """
-    This is where the main injecting happens
+    This is the main injection process.
 
     Args:
-        window: tk.Tk -> the tkinter window.
-        log_text: tk.Text -. the tkinter Text widget.
-        selected_bundle: str -> the current selected bundle
-        selected_which_one: str -> the current selected ipcc type
+        window (tk.Tk): The tkinter window.
+        log_text (tk.Text): The text widget for logger.
+        selected_bundle (str): The selected bundle name.
+        selected_container (str): The selected option name.
     """
 
     # Sets the running variable to True so the button stop working, to avoid multi-clicking the button
-    setRunning(True)
+    VariableManager().setRunning(True)
     try:
         if not checkInternetConnection():
             messagebox.showerror("No Internet", "Please make sure to connect to the internet first")
-            setRunning(False)
-            logging.debug("injection.py - User tried to inject without internet")
+            VariableManager().setRunning(False)
+            logger.debug("User tried to inject without internet")
             return
         # Get product information
         product_version, product_type = DeviceManager().extractValuesFromLog()
-        
-        logging.info(f"injection.py - iPhone model: {product_type}, iPhone version: {product_version}")
 
         is_new_iPhone = False
 
@@ -189,22 +105,40 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
         for new_iPhone in new_iPhones:
             if not product_type == new_iPhone:
                 continue
-            logging.info("injection.py - User have a new iPhone")
+            logger.info("User have a new iPhone")
             messagebox.showinfo("Instructions", new_iPhone_message)
             is_new_iPhone = True
 
+        # Create custom style for the progress bar. It looks better
+        style = Style()
+        style.theme_use('clam')
+
+        # Configure colors and appearance for the custom style
+        style.configure("Custom.Horizontal.TProgressbar",
+                        background="#3b56bc", 
+                        troughcolor="#FFFFFF",
+                        bordercolor="#3b56bc",
+                        lightcolor="#3b56bc", 
+                        darkcolor="#3b56bc",  
+                        troughrelief="flat",  
+                        troughborderwidth=9,  
+                        borderwidth=0,  # No border
+                        relief="flat",  # Flat relief
+                        )
+
         # Create progress frame
-        progress_frame: tk.Frame = tk.Frame(window, bg="#0a1750")
+        progress_frame = tk.Frame(window, bg="#0a1750")  # Dark blue background
         progress_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         # Progress label
-        progress_label: tk.Label = tk.Label(progress_frame, text="Checking the existence of the file...", font=(app_font, DPIResize(14)), bg="#0a1750", fg="white")
+        progress_label = tk.Label(progress_frame, text="Checking the existence of the file...",
+                                font=("Arial", 14), bg="#0a1750", fg="white")  # Adjust font and colors
         progress_label.pack(pady=5)
 
         # Progress bar
-        progress_bar: Progressbar = Progressbar(progress_frame, orient="horizontal", length=300, mode="indeterminate")
+        progress_bar = Progressbar(progress_frame, orient="horizontal", length=300, mode="indeterminate",
+                                style="Custom.Horizontal.TProgressbar")  # Use custom style
         progress_bar.pack(pady=5)
-
         progress_bar.start(interval=50)  # Start the indeterminate progress bar
 
         # A small reuseable function to replace any whitespace with nothing and %20 with a dot, used for the url and a message
@@ -217,13 +151,15 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
             'unknown.bundle': "Unknown%20Bundle",
         }
 
-        selected_which_one: str = which_one_mappings.get(selected_which_one, "Your not suppose to see this message ): ")
+        selected_container: str = which_one_mappings.get(selected_container, "Your not suppose to see this message ): ")
 
         # URL for downloading IPCC
-        url = f"https://raw.githubusercontent.com/Abdullah-Albanna/YemenIPCC/master/{replace_space(product_type)}/iOS%20{product_version}/Using%20{selected_which_one}/{replace_space(product_type)}_iOS_{product_version}_{selected_bundle}.ipcc"
+        url = f"https://raw.githubusercontent.com/Abdullah-Albanna/YemenIPCC/master/{replace_space(product_type)}/iOS%20{product_version}/Using%20{selected_container}/{replace_space(product_type)}_iOS_{product_version}_{selected_bundle}.ipcc"
+        window.update_idletasks()
         downloadable = asyncio.run(isFileDownloadable(url))
         if not downloadable:
-            logging.error("injection.py - User have requested a bundle that is not avaliable")
+            # If the ipcc is note downloadable, stops the progress bar and pops an error
+            logger.error("User have requested a bundle that is not avaliable")
             progress_bar.stop()
             progress_bar.destroy()
             progress_label.destroy()
@@ -233,7 +169,7 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
             iPhone model: {product_type}
             iPhone version: {product_version}
             Bundle: {selected_bundle}
-            Container: {replace_perc20(selected_which_one)}
+            Container: {replace_perc20(selected_container)}
 
             is not available!
 
@@ -244,57 +180,54 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
             messagebox.showerror("Bundle not Found", message)
             return
         
-        remove_bundles_files: List[str] = [
-            os.path.join("."  ,"Removes", "Remove(default).ipcc"),
-        ]
-        total_files = len(remove_bundles_files)
+
+        remove_bundle_file: str = os.path.join("."  ,"Removes", "Remove(default).ipcc")
         
-        logging.info(f"injection.py - Url is: {url}")
+        logger.info(f"URL: {url}")
 
-        for i, file_path in enumerate(remove_bundles_files, start=1):
-            progress_label.config(text=f"Removing Old IPCC: {i}/{total_files}")
-            window.update_idletasks()  # Update the label text
+        progress_label.config(text=f"Removing Old IPCC ...")
+        window.update_idletasks()  # Update the label text
 
-            # Remove old IPCC file
-            with managedProcess([ideviceinstaller, "install", file_path], **args) as remove_process:
-                stdout = remove_process.communicate()[0]
-                stderr = remove_process.communicate()[1]
-                result = stdout + stderr
+        # Remove old IPCC file
+        with managedProcess([ideviceinstaller, "install", remove_bundle_file], **args) as remove_process:
+            stdout = remove_process.communicate()[0]
+            stderr = remove_process.communicate()[1]
+            result = stdout + stderr
 
-            if getValidate() == True and not is_new_iPhone:
-                sleep(20)  # Why?, well some devices need sometime to process the removal, so it waits for that
+        # If validate is set, and it is not a new phone, it slows down a bit
+        if VariableManager().getValidate() == True and not is_new_iPhone:
+            sleep(20)  # Why?, well some devices need sometime to process the removal, so it waits for that
+        else:
+            # Else fast, because it is not needed to check
+            sleep(7)
+
+        if not "Could not connect to lockdownd. Exiting." in result:
+
+            # Colors the logs
+            if "SUCCESS: " in result:
+                color = "green"
+            elif "Install: Complete" in result:
+                color = "green"
+            elif "ERROR: " in result:
+                logger.error(f"An error happened in the removal, error: {result}")
+                color = "red"
+            elif "No device found":
+                color = "red"
             else:
-                sleep(7)
+                color = "grey"
 
-            if not "Could not connect to lockdownd. Exiting." in result:
+            log_text.tag_configure(color, foreground=color)
+            log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
+            log_text.insert(tk.END, f"\n{result}\n", color)
+            log_text.see(tk.END)
+        else:
+            logger.error("Trust error")
+            messagebox.showerror("Trust Error", "Please reconnect the usb and try again")
+            progress_frame.destroy()
 
-                # Colors the logs
-                if "SUCCESS: " in result:
-                    color = "green"
-                elif "Install: Complete" in result:
-                    color = "green"
-                elif "ERROR: " in result:
-                    logging.warning(f"injection.py - An error happened in the removal, error: {result}")
-                    color = "red"
-                elif "No device found":
-                    color = "red"
-                else:
-                    color = "grey"
-                log_text.tag_configure(color, foreground=color)
-                log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
-                log_text.insert(tk.END, f"\n{result}\n", color)
-                log_text.see(tk.END)
-
-                progress_bar["value"] = (i / total_files) * 100
-                window.update_idletasks()
-            else:
-                logging.error("injection.py - Trust error")
-                messagebox.showerror("Trust Error", "Please reconnect the usb and try again")
-                progress_frame.destroy()
-
-        # Sets up a temporary path for the .selected .ipcc file to be downloaded to
+        # Sets up a temporary path for the selected .ipcc file to be downloaded to
         with TemporaryDirectory() as temp_dir:
-            logging.debug(f"injection.py - Temporary directory for the .ipcc is: {temp_dir}")
+            logger.debug(f"Temporary directory for the .ipcc: {temp_dir}")
             progress_label.config(text=f"Downloading {selected_bundle} for {product_type}...")   
             window.update_idletasks()
             
@@ -309,8 +242,9 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
 
             # Now we go back so we can continue with the rest
             os.chdir(last_dir)
+
             total_size = None
-            while True:
+            while True: 
                 # Read stderr stream
                 output = download_process.stderr.readline().strip()
                 if output == '' and download_process.poll() is not None:
@@ -341,13 +275,13 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
                 progress_label.config(text=f"Injecting {selected_bundle}.IPCC to {product_type}")
                 window.update_idletasks()
 
-                # Inject .ipcc
-                if getValidate() == True and not is_new_iPhone:
+                if VariableManager().getValidate() == True and not is_new_iPhone:
+                    # If validate is set and is not a new iPhone, it would start the system logger right before injecting
                     log_queue = []
                     stop_event = Event()
-                    log_thread = Thread(target=read_syslog, args=(log_queue, stop_event))
-                    log_thread.start()
+                    startThread(target=lambda: readSysLog(log_queue, stop_event), name="read syslog", daemon=False)
 
+                # Inject .ipcc
                 with managedProcess([ideviceinstaller, "install", downloaded_file_path], **args) as injecting_process:
                     stdout = injecting_process.communicate()[0]
                     stderr = injecting_process.communicate()[1]
@@ -361,7 +295,7 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
                     elif "Install: Complete" in result:
                         color = "green"
                     elif "ERROR: " in result:
-                        logging.warning(f"injection.py - An error accoured in the injection of the file, error: {result}")
+                        logger.error(f"An error accoured in the injection of the file, error: {result}")
                         color = "red"
                     elif "No device found":
                         color = "red"
@@ -373,16 +307,17 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
                     log_text.insert(tk.END, f"\n{result}\n", color)
                     log_text.see(tk.END)
 
-                if getValidate() == True and not is_new_iPhone:
+                if VariableManager().getValidate() == True and not is_new_iPhone:
                     progress_bar.stop()
                     progress_bar.destroy()
                     progress_label.destroy()
+
                     # Create new progress bar for validation
                     validate_progress_frame = tk.Frame(window, bg="#0a1750")
                     validate_progress_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
                     validate_progress_label = tk.Label(validate_progress_frame, text="Validating...", font=(app_font, DPIResize(14)), bg="#0a1750", fg="white")
                     validate_progress_label.pack(pady=5)
-                    validate_progress_bar = Progressbar(validate_progress_frame, orient="horizontal", length=300, mode="determinate")
+                    validate_progress_bar = Progressbar(validate_progress_frame, orient="horizontal", length=300, mode="determinate", style="Custom.Horizontal.TProgressbar")
                     validate_progress_bar.pack(pady=5)
 
                     validate_progress_bar["maximum"] = 40
@@ -391,7 +326,7 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
                         window.update_idletasks()
                         sleep(1)
 
-                    # Collect logs from the syslog thread
+                    # Collect logs from the syslog thread and stop it
                     logs_result = "\n".join(log_queue)
                     stop_event.set()
                 else:
@@ -402,10 +337,10 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
             
             else:
                 # If the download process failed
-                logging.error("injection.py - Could not download the file")
+                logger.error("Could not download the file")
                 window.update_idletasks()
 
-            # This deletes the temp directory once done with it, over time, it can get a lot temporary folders
+            # This deletes the temp directory once done with it, over time, it can get a lot of temporary folders
             for root, dirs, files in os.walk(temp_dir, topdown=False):
                 for file in files:
                     os.remove(os.path.join(root, file))
@@ -414,23 +349,28 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
             os.rmdir(temp_dir)
 
         # Validate the injection by checking the logs
-        if getValidate() == True and not is_new_iPhone:
+        if VariableManager().getValidate() == True and not is_new_iPhone:
+            # Only if it is not empty
             if logs_result != None or logs_result == "":
+                # If the line "SIM is ready" in the logs, that means it is working
                 if "SIM is ready" in logs_result:
-                    logging.info("injection.py - SIM is ready, injection was successful.")
+                    logger.success("SIM is ready, injection was successful.")
 
                     log_text.tag_configure("green", foreground="green")
                     log_text.insert(tk.END, "----⸻⸻Validatation⸻⸻----")
                     log_text.insert(tk.END, f"\nInjection successful. SIM is ready.\n", "green")
                     log_text.see(tk.END)
+                    asyncio.run(sendData("injection", device=product_type, success=True))
                 else:
-                    logging.error("injection.py - SIM is not ready, injection failed.")
+                    logger.error("SIM is not ready, injection failed.")
 
                     log_text.tag_configure("red", foreground="red")
                     log_text.insert(tk.END, "----⸻⸻Validatation⸻⸻----")
                     log_text.insert(tk.END, f"\nInjection failed. SIM is not ready.\n", "red")
                     log_text.see(tk.END)
+                    asyncio.run(sendData("injection", device=product_type, success=False))
             else:
+                logger.info("Could not validate the injection process")
                 log_text.tag_configure("grey", foreground="grey")
                 log_text.insert(tk.END, "----⸻⸻Validatation⸻⸻----")
                 log_text.insert(tk.END, f"\nCould not validate\n", "grey")
@@ -447,30 +387,35 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text, selected_bundle: 
             if download_process.wait() != 0:
                 continue
             if not messagebox.askyesno("Restart", f"Looks like you have {product_type}, you might need to restart it\n\n Do you want to restart your iPhone?"):
-                logging.info("injection.py - User declined the restart of his new iPhone")
+                logger.info("User declined the restart of his new iPhone")
                 continue
 
-            managedProcess([idevicediagnostics, "restart"], **args)
+            with managedProcess([idevicediagnostics, "restart"], **args) as restart_process:
+                stdout = restart_process.communicate()[0]
+                stderr = restart_process.communicate()[1]
+                if stdout:
+                    logger.debug(stdout)
+                elif stderr:
+                    logger.warning(stderr)
             
     finally:
-
         # And finaly activates the button
-        setRunning(False)
+        VariableManager().setRunning(False)
 
-def injection(window: tk.Tk, log_text: tk.Text, selected_bundle: str, selected_which_one: str, app_font) -> None:
+def injection(window: tk.Tk, log_text: tk.Text, selected_bundle: str, selected_container: str, app_font) -> None:
 
     """
     Remove old IPCC files and inject the selected one into the device.
 
     Args:
         window (tk.Tk): The tkinter window.
-        log_text (tk.Text): The text widget for logging.
+        log_text (tk.Text): The text widget for logger.
         selected_bundle (str): The selected bundle name.
-        selected_which_one (str): The selected option name.
+        selected_container (str): The selected option name.
     """
 
-    # The thread has to be run from here, otherwise, the log autoscroll won't work for somereason
-    startThread(lambda: removingAndInjectingIPCC(window, log_text, selected_bundle, selected_which_one, app_font), "removingAndInjectingIPCC", logging)
+    # The thread has to be run from here, or the progress bar won't work well
+    startThread(lambda: removingAndInjectingIPCC(window, log_text, selected_bundle, selected_container, app_font), "removingAndInjectingIPCC")
 
 
 def cleanRemove(window: tk.Tk, log_text: tk.Text, app_font) -> None:
@@ -481,12 +426,12 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text, app_font) -> None:
 
     Args:
         window: tk.Tk --> the tkinter window.
-        log_text: tk.Text --> The text widget for logging
+        log_text: tk.Text --> The text widget for logger
     """
     if not messagebox.askokcancel("Clean Bundles", 'Press "OK" if you want to start removing old bundles on the iPhone'):
         return
 
-    setRunning(True)
+    VariableManager().setRunning(True)
 
     # Check if device is connected
     with managedProcess([ideviceinfo, '-s'], **args) as proc:
@@ -494,12 +439,29 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text, app_font) -> None:
         stderr = proc.communicate()[1]
         result = stdout + stderr
         if "No device found" in result:
-            logging.warning("injection.py - There is no device connected while doing a clean removal")
-            log_text.tag_configure("red", foreground="red")
+            logger.warning("There is was no device connected while doing a clean removal")
+            log_text.tag_configure("yellow", foreground="yellow")
             log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
-            log_text.insert(tk.END, "\nNo device found, is it plugged in?\n", "red")
+            log_text.insert(tk.END, "\nNo device found, is it plugged in?\n", "yellow")
             log_text.see(tk.END)
             return
+        
+    # Create custom style for the progress bar. It looks better
+    style = Style()
+    style.theme_use('clam')
+
+    # Configure colors and appearance for the custom style
+    style.configure("Custom.Horizontal.TProgressbar",
+                    background="#3b56bc",  
+                    troughcolor="#FFFFFF",  
+                    bordercolor="#3b56bc",  
+                    lightcolor="#3b56bc",  
+                    darkcolor="#3b56bc",  
+                    troughrelief="flat",  
+                    troughborderwidth=9,  # No trough border
+                    borderwidth=0,  # No border
+                    relief="flat",  # Flat relief
+                    )
 
     # Create progress frame
     progress_frame = tk.Frame(window, bg="#0a1750")
@@ -510,7 +472,7 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text, app_font) -> None:
     progress_label.pack(pady=5)
 
     # Progress bar
-    progress_bar = Progressbar(progress_frame, orient="horizontal", length=300, mode="determinate")
+    progress_bar = Progressbar(progress_frame, orient="horizontal", length=300, mode="determinate", style="Custom.Horizontal.TProgressbar")
     progress_bar.pack(pady=5)
 
     # Files to remove
@@ -537,7 +499,7 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text, app_font) -> None:
             elif "Install: Complete" in result:
                 color = "green"
             elif "ERROR: " in result:
-                logging.error(f"injection.py - There was an error in the clean removal process, error: {result}")
+                logger.error(f"There was an error in the clean removal process, error: {result}")
                 color = "red"
             elif "No device found":
                 color = "red"
@@ -555,7 +517,7 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text, app_font) -> None:
     # Destroy progress frame
     progress_frame.destroy()
 
-    setRunning(False)
+    VariableManager().setRunning(False)
 
 
 def disableIfRunning(button: tk.Button, window: tk.Tk) -> None:
@@ -569,11 +531,10 @@ def disableIfRunning(button: tk.Button, window: tk.Tk) -> None:
         window: tk.Tk
     
     """
-    while True:
-        isrunning = getRunning()
+    while not terminate.is_set():
         plugged = DeviceManager().checkIfPlugged()
         
-        if isrunning:
+        if VariableManager().getRunning():
             button.config(state=tk.DISABLED)
         else:
             button.config(state=tk.NORMAL if plugged else tk.DISABLED)

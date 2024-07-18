@@ -1,49 +1,20 @@
-from .projectimports import (subprocess, tk, messagebox, system, os, sleep, managedProcess, Union)
+from . import (
+    subprocess, tk, messagebox, 
+    Union,
+    sleep
+    )
 from .thread_starter import startThread
-from .logging_config import setupLogging
-import logging
+from .logger_config_class import YemenIPCCLogger 
+from .get_bin_path import BinaryPaths
+from .get_system import system
+from .managed_process import managedProcess
 
 
-setupLogging(debug=True, file_logging=True)
+logger = YemenIPCCLogger().logger
+bin_paths = BinaryPaths().getPaths()
 
-# What these three do is specifing the executeable binary for each system so the user do not have to install anything
-if system == "Mac":
-
-    # This sets the library looking path to the project's library, same thing we did in the injection.py
-    os.environ['DYLD_LIBRARY_PATH'] = "./Scripts/mac_binary/lib:$DYLD_LIBRARY_PATH"
-
-    # Copies the path so it could be passed to the subprocesses
-    env = os.environ.copy()
-
-    idevicepair: str = "./Scripts/mac_binary/idevicepair"
-
-if system == "Linux":
-    
-    os.environ['LD_LIBRARY_PATH'] = "./Scripts/linux_binary/lib:$LD_LIBRARY_PATH"
-    env = os.environ.copy()
-
-    idevicepair: str = "./Scripts/linux_binary/idevicepair"
-
-elif system == "Windows":
-
-    idevicepair: str = ".\\Scripts\\windows_binary\\idevicepair.exe"
-    env = os.environ.copy()
-    args = {
-        'stdout': subprocess.PIPE,
-        'stderr': subprocess.PIPE,
-        'text': True,
-        'env': env,
-        'creationflags': subprocess.CREATE_NO_WINDOW
-    }
-
-if system != "Windows":
-
-    args = {
-            'stdout': subprocess.PIPE,
-            'stderr': subprocess.PIPE,
-            'text': True,
-            'env': env
-        }
+idevicepair = bin_paths["idevicepair"]
+args = bin_paths["args"]
 
 
 def validateDevice() -> Union[str, bool]:
@@ -74,9 +45,8 @@ def validateDevice() -> Union[str, bool]:
             return "denied"
 
     except subprocess.CalledProcessError as e:
-        # If an error occurs during the subprocess, print the error message
         error_message: str = e.stderr.strip()
-        print(error_message)
+        logger.error(error_message)
 
 def repairiPhone(log_text) -> None:
 
@@ -96,18 +66,23 @@ def repairiPhone(log_text) -> None:
         stderr = unpair_process.communicate()[1]
         result = stdout + stderr
 
-    # To avoid it logging "No Device found." twice
+    # To avoid it logger "No Device found." twice
     if "No device found, is it plugged in?" in result or "No device found." in result:
-        startThread(lambda: pairAndCheck(log_text), "pairAndCheck", logging)
+        startThread(lambda: pairAndCheck(log_text), "pairAndCheck")
         return
 
     if "SUCCESS: " in result:
         color = "green"
+        logger.debug("unPaired with the device successfully")
     elif "ERROR: " in result:
-        logging.error(f"repair.py - An error occurred in the repairiPhone(), error result: {result}")
+        if not "Please accept the trust dialog on the screen of device" in result:
+            if not "is not paired with this host" in result:
+                logger.warning(f"An error occurred in the repairiPhone(), error result: {result}")
         color = "red"
     elif "No device found.":
         color = "red"
+    elif "Please accept the trust dialog on the screen of device" in result:
+        color = "blue"
     else:
         color = "grey"
 
@@ -118,7 +93,7 @@ def repairiPhone(log_text) -> None:
     log_text.see(tk.END)
 
     # Start a thread to pair the iPhone again and check the validation
-    startThread(lambda: pairAndCheck(log_text), "pairAndCheck", logging)
+    startThread(lambda: pairAndCheck(log_text), "pairAndCheck")
 
 def pairAndCheck(log_text) -> None:
     
@@ -138,11 +113,15 @@ def pairAndCheck(log_text) -> None:
 
         if "SUCCESS: " in result:
             color = "green"
+            logger.debug("Paired with the device successfully")
         elif "ERROR: " in result:
-            logging.error(f"repair.py - An error occurred in the pairAndCheck(), error result: {result}")
-            color = "red"
+            if not "Please enter the passcode on the device" in result: 
+                if not "Please accept the trust dialog on the screen of device"  in result:
+                    color = "red"
+                    logger.error(f"An error occurred in the pairAndCheck(), error result: {result}")
+            color = "yellow"
         elif "No device found.":
-            color = "red"
+            color = "yellow"
         else:
             color = "grey"
 
@@ -162,10 +141,10 @@ def pairAndCheck(log_text) -> None:
         elif "No device found." in result:
             break
         elif "symbol lookup error" in result:
-            logging.critical(f"repair.py - An error occurred, possibly library error, error: {result}")
+            logger.critical(f"An error occurred, possibly library error, error: {result}")
             break
         elif "lockdownd_pair_cu" in result:
-            logging.critical(f"repair.py - An error occurred, possibly library error, error: {result}")
+            logger.critical(f"An error occurred, possibly library error, error: {result}")
             break
 
 
