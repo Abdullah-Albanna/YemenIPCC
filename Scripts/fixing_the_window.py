@@ -1,14 +1,19 @@
-from .projectimports import (tk, ctypes, platform)
-from .logging_config import setupLogging
-import logging
+from . import (
+    tk, ctypes, 
+    sleep
+    )
+from .logger_config_class import YemenIPCCLogger
+
+logger = YemenIPCCLogger().logger
+from .get_system import system
 
 
-setupLogging(debug=True, file_logging=True)
+def setDpiAwareness() -> None:
+    """
+    Sets up the dpi for windows
+    """
 
-
-def setDpiAwareness():
-
-    if platform.system() == "Windows":
+    if system == "Windows":
         try:
             # Try to set the DPI awareness for the application (Windows 8.1 and later)
             ctypes.windll.shcore.SetProcessDpiAwareness(1)  # PROCESS_SYSTEM_DPI_AWARE = 1
@@ -17,7 +22,7 @@ def setDpiAwareness():
                 # For older versions of Windows
                 ctypes.windll.user32.SetProcessDPIAware()
             except Exception as e:
-                logging.error(f"fixing_the_window.py - Could not set DPI awareness: {e}")
+                logger.error(f"Could not set DPI awareness: {e}")
     else:
         pass
 
