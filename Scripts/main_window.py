@@ -1,32 +1,24 @@
+from . import (
+    tk, os, webbrowser, messagebox, asyncio,
+    List
+    ) 
 from .changing_option import (changeWhichOne, changeBundle)
 from .check_for_update import (checkForUpdateButton)
 from .injection import (cleanRemove)
 from .repair import (repairiPhone)
-from .thread_starter import startThread
 from .variables_manager import VariableManager
+from .send_data import sendData
+from .temp_uuid import getUUID
+from .inject_from_file import injectFromFile
+from .get_system import system
+from .device_control import deviceControl
+from .thread_terminator_var import terminate
+from .exit_handle import handleExit
 
-from .projectimports import (tk, List, os, system, DPIResize, sleep, webbrowser, messagebox) 
-from .logging_config import setupLogging
-import logging
+from .logger_config_class import YemenIPCCLogger
 
-
-setupLogging(debug=True, file_logging=True)
-
-def saveVariableInfo(variable_name, variable_info):
-        # Load existing variables from the text file
-    try:
-        temp_variables = VariableManager().loadTempVariables()
-    except Exception as e:
-        logging.error(f"updating_status.py - Could not load the saved bundle variables, error: {e}")
-
-    # Update or add the selected bundle name to the saved variables
-    temp_variables[f'{variable_name}'] = variable_info
+logger = YemenIPCCLogger().logger
     
-    # Save the updated variables to the text file
-    try:
-        VariableManager().saveVariables(temp_variables)
-    except Exception as e:
-        logging.error(f"updating_status.py - Could not save bundle option, error: {e}")
 
 
 def logText(app_font: tk.font) -> tk.Text:
@@ -40,17 +32,17 @@ def logText(app_font: tk.font) -> tk.Text:
     global log_text
     # Create log text widget
     try:
-        log_text = tk.Text(log_frame, font=(app_font, DPIResize(12)), wrap="word", bg="#0a1750", fg="white", width=35)
+        log_text = tk.Text(log_frame, font=(app_font, 12), wrap="word", bg="#0a1750", fg="white", width=35)
         log_text.pack(side=tk.LEFT, fill="both")
     except Exception as e:
-        logging.error(f"main_window.py - An error occurred while packing the log_text, error: {e}")
+        logger.error(f"An error occurred while packing the log_text, error: {e}")
 
     # Create scrollbar for log text widget
     try:
         log_scrollbar: tk.Scrollbar = tk.Scrollbar(log_frame, command=log_text.yview, width=1, troughcolor="#030b2c")
         log_scrollbar.pack(side=tk.RIGHT, fill="y")
     except Exception as e:
-        logging.error(f"main_window.py - An error occurred while packing the log_scrollbar, error: {e}")
+        logger.error(f"An error occurred while packing the log_scrollbar, error: {e}")
 
     log_text.config(yscrollcommand=log_scrollbar.set)
 
@@ -67,7 +59,6 @@ def radioButtons(which_one: List[str], bundles: List[str], x: tk.IntVar, y: tk.I
         x (tk.IntVar): Variable for the bundle selection.
         y (tk.IntVar): Variable for the option selection.
     """
-    global selected_bundle, selected_which_one
 
     # Create radio buttons for options
     for index in range(len(which_one)):  
@@ -76,7 +67,7 @@ def radioButtons(which_one: List[str], bundles: List[str], x: tk.IntVar, y: tk.I
                                 text=which_one[index],
                                 variable=y,
                                 value=index,
-                                font=(app_font, DPIResize(15)),
+                                font=(app_font, 15),
                                 padx=33,
                                 compound="top",
                                 indicatoron=1,
@@ -96,7 +87,7 @@ def radioButtons(which_one: List[str], bundles: List[str], x: tk.IntVar, y: tk.I
                                 text=bundles[index],
                                 variable=x,
                                 value=index,
-                                font=(app_font, DPIResize(20)),
+                                font=(app_font, 20),
                                 padx=33,
                                 compound="left",
                                 indicatoron=0,
@@ -115,7 +106,7 @@ def ContainerTypeLabel() -> None:
     """
     Creates a label for indicating the type of .ipcc.
     """
-    tk.Label(whichoneframe, text="Container Type:", font=("Arial", DPIResize(25)), bg="#030b2c", fg="white").pack(side="top", fill="both")
+    tk.Label(whichoneframe, text="Container Type:", font=("Arial", 25), bg="#030b2c", fg="white").pack(side="top", fill="both")
 
 
 def frames(window: tk.Tk) -> tk.Frame:
@@ -165,7 +156,7 @@ def windowCreation(window: tk.Tk) -> None:
     # Gets the resolution of the device and set it to it and subtract from it a little so it won't go full screen
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight()
-    logging.debug(f"main_window.py - Screen resolution: {screen_width}:{screen_height}")
+    logger.debug(f"Screen resolution: {screen_width}:{screen_height}")
     window.geometry(f"{round(screen_width * 0.80)}x{round(screen_height * 0.80)}")
 
 
@@ -173,23 +164,14 @@ def windowCreation(window: tk.Tk) -> None:
     window.config(background="#030b2c") # Dark Blue
     path = os.path.join("_internal", "Scripts", "Images", "YemenIPCC.png")
     if os.path.exists(path):
-        icon = tk.PhotoImage(file=path)
+        icon = tk.PhotoImage(master=window, file=path)
     else:
-        icon = tk.PhotoImage(file=os.path.join("." ,"Scripts", "Images", "YemenIPCC.png"))
+        icon = tk.PhotoImage(master=window, file=os.path.join("." ,"Scripts", "Images", "YemenIPCC.png"))
 
     window.iconphoto(True, icon)
     window.withdraw() 
     
 def menuBarCreation(window: tk.Tk, current_version: str, app_font: tk.font) -> None:
-
-    def on_validate_toggle():
-        if validate_var.get():
-            saveVariableInfo("validate", "True")
-        else:
-            if messagebox.askyesno("Disable Validation", "Turning off validating would make development slow, it is recommended to leave it on\n\n Are you sure you want to disable it?"):
-                saveVariableInfo("validate", "False")
-            else:
-                validate_var.set(True)
     """
     Creates and configures the menu bar.
     
@@ -197,38 +179,53 @@ def menuBarCreation(window: tk.Tk, current_version: str, app_font: tk.font) -> N
         window (tk.Tk): The main window.
         current_version (str): The current version of the project.
     """
+    def on_validate_toggle():
+        if validate_var.get():
+            VariableManager().saveVariableInfo("validate", "True")
+        else:
+            if messagebox.askyesno("Disable Validation", "Turning off validating would make development slow, it is recommended to leave it on\n\n Are you sure you want to disable it?"):
+                VariableManager().saveVariableInfo("validate", "False")
+            else:
+                validate_var.set(True)
 
     menubar = tk.Menu(window)
     window.config(menu=menubar, bg="#0a1750") # Lighter than the Dark Blue
     validate_var = tk.BooleanVar(value=True)  # Checked by default
     
 
-    mainmenu = tk.Menu(menubar, tearoff=0, font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)))
-    toolsmenu = tk.Menu(menubar, tearoff=0, font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)))
-    helpmenu = tk.Menu(menubar, tearoff=0, font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)))
+    filemenu = tk.Menu(menubar, tearoff=0, font=(app_font, 14 if system == "Mac" or system == "Linux" else 10))
+    toolsmenu = tk.Menu(menubar, tearoff=0, font=(app_font, 14 if system == "Mac" or system == "Linux" else 10))
+    helpmenu = tk.Menu(menubar, tearoff=0, font=(app_font, 14 if system == "Mac" or system == "Linux" else 10))
     
+
+    menubar.add_cascade(label="File", menu=filemenu, font=(app_font, 14 if system == "Mac" or system == "Linux" else 10))
+    filemenu.add_command(label="open", font=(app_font, 14 if system == "Mac" or system == "Linux" else 10), command=lambda: injectFromFile(log_text))
+    #filemenu.add_command(label="save", font=(app_font, 14 if system == "Mac" or system == "Linux" else 10), command=lambda: saveIPCCFile())
 
     # It looks bad in Macs :(
     if system != "Mac":
-        menubar.add_cascade(label="Main", menu=mainmenu, font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)))
-        mainmenu.add_command(label="exit", font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)), command=window.quit)
+        filemenu.add_separator()
+        filemenu.add_command(label="exit", font=(app_font, 14 if system == "Mac" or system == "Linux" else 10), command=lambda: [window.destroy(), asyncio.run(sendData('active', active=False, uid=getUUID())), handleExit()])
 
-    menubar.add_cascade(label="Tools", menu=toolsmenu, font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)))
-    toolsmenu.add_command(label="clean", font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)), command=lambda: cleanRemove(window, log_text, app_font))
-    toolsmenu.add_command(label="re-pair", font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)), command=lambda: repairiPhone(log_text))
+    menubar.add_cascade(label="Tools", menu=toolsmenu, font=(app_font, 14 if system == "Mac" or system == "Linux" else 10))
+    toolsmenu.add_command(label="clean", font=(app_font, 14 if system == "Mac" or system == "Linux" else 10), command=lambda: cleanRemove(window, log_text, app_font))
+    toolsmenu.add_command(label="re-pair", font=(app_font, 14 if system == "Mac" or system == "Linux" else 10), command=lambda: repairiPhone(log_text))
     # Add a checkbutton to the Tools menu
     toolsmenu.add_checkbutton(
         label="validate",
-        font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)),
+        font=(app_font, 14 if system == "Mac" or system == "Linux" else 10),
         variable=validate_var,
         command=on_validate_toggle
     )
+    toolsmenu.add_separator()
+    toolsmenu.add_command(label="restart", font=(app_font, 14 if system == "Mac" or system == "Linux" else 10), command=lambda: deviceControl("restart", log_text))
+    toolsmenu.add_command(label="shutdown", font=(app_font, 14 if system == "Mac" or system == "Linux" else 10), command=lambda: deviceControl("shutdown", log_text))
 
     toolsmenu.add_separator()
-    toolsmenu.add_command(label="check for updates", font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)), command=lambda: checkForUpdateButton(current_version))
+    toolsmenu.add_command(label="check for updates", font=(app_font, 14 if system == "Mac" or system == "Linux" else 10), command=lambda: checkForUpdateButton(current_version))
 
-    menubar.add_cascade(label="Help", menu=helpmenu, font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)))
-    helpmenu.add_command(label="github", font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)), command=lambda: webbrowser.open_new_tab("https://github.com/Abdullah-Albanna/YemenIPCC"))
+    menubar.add_cascade(label="Help", menu=helpmenu, font=(app_font, 14 if system == "Mac" or system == "Linux" else 10))
+    helpmenu.add_command(label="github", font=(app_font, 14 if system == "Mac" or system == "Linux" else 10), command=lambda: webbrowser.open_new_tab("https://github.com/Abdullah-Albanna/YemenIPCC"))
     if system != "Mac":
         helpmenu.add_separator()
-        helpmenu.add_command(label="about", font=(app_font, 14 if system == "Mac" or system == "Linux" else DPIResize(10)), command= lambda: messagebox.showinfo("About", f"Yemen IPCC \n\n A simple app to automate the process of injecting the network configuration files (.ipcc) to the iPhone devices in Yemen\n\n\n author: Abdullah Al-Banna \n version: {current_version}"))
+        helpmenu.add_command(label="about", font=(app_font, 14 if system == "Mac" or system == "Linux" else 10), command= lambda: messagebox.showinfo("About", f"Yemen IPCC \n\n A simple app to automate the process of injecting the network configuration files (.ipcc) to the iPhone devices in Yemen\n\n\n author: Abdullah Al-Banna \n version: {current_version}"))
