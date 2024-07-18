@@ -1,14 +1,15 @@
 
-from .projectimports import (tk, List, os, platform, gettempdir)
+from . import (
+    tk, os, 
+    List, logger,
+    gettempdir
+    )
 from .variables_manager import VariableManager
-from .logging_config import setupLogging
-import logging
+from .get_system import system
 
 
-setupLogging(debug=True, file_logging=True)
 
-
-tempdir = gettempdir() if platform.system() == "Windows" else os.path.join(os.path.expanduser("~/.cache"))
+tempdir = gettempdir() if system == "Windows" else os.path.join(os.path.expanduser("~/.cache"))
 
 
 def changeBundle(log_text: tk.Text = None, bundles: List[str] = None, x: tk.IntVar = None) -> str:
@@ -27,26 +28,13 @@ def changeBundle(log_text: tk.Text = None, bundles: List[str] = None, x: tk.IntV
  
     # Gets what you selected
     selected_bundle = bundles[x.get()]
-    logging.debug(f"changing_option.py - Selected a new bundle option: {selected_bundle}")
+    logger.debug(f"Selected a new bundle option: {selected_bundle}")
     if log_text is not None:
         log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
         log_text.insert(tk.END, f"\nSelected {selected_bundle}\n")
         log_text.see(tk.END)
-        
-    # Load existing variables from the text file
-    try:
-        temp_variables = VariableManager().loadTempVariables()
-    except Exception as e:
-        logging.error(f"changing_option.py - Could not load the saved bundle variables, error: {e}")
-
-    # Update or add the selected bundle name to the saved variables
-    temp_variables['selected_bundle'] = selected_bundle
     
-    # Save the updated variables to the text file
-    try:
-        VariableManager().saveVariables(temp_variables)
-    except Exception as e:
-        logging.error(f"changing_option.py - Could not save bundle option, error: {e}")
+    VariableManager().saveVariableInfo("selected_bundle", selected_bundle)
 
     return selected_bundle
 
@@ -63,27 +51,13 @@ def changeWhichOne(log_text: tk.Text = None, which_one: List[str] = None, y: tk.
     Returns:
         str: The selected 'which one' option.
     """
-    selected_which_one = which_one[y.get()]
-    logging.debug(f"changing_option.py - Selected a new container option: {selected_which_one}")
+    selected_container = which_one[y.get()]
+    logger.debug(f"Selected a new container option: {selected_container}")
     if log_text is not None:
         log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
-        log_text.insert(tk.END, f"\nSelected {selected_which_one}\n")
+        log_text.insert(tk.END, f"\nSelected {selected_container}\n")
         log_text.see(tk.END)
 
-    # Load existing variables from the text file
-    try:
-        saved_variables = VariableManager().loadTempVariables()
-    except Exception as e:
-        logging.error(f"changing_option.py - Could not load saved container option, error: {e}")
-        pass
-    # Update or add the selected 'which one' option to the saved variables
-    saved_variables['selected_which_one'] = selected_which_one
-    
-    # Save the updated variables to the text file
-    try:
-        VariableManager().saveVariables(saved_variables)
-    except Exception as e:
-        logging.error(f"changing_option.py - Could not save container option, error: {e}")
-        pass
+    VariableManager().saveVariableInfo("selected_container", selected_container)
 
-    return selected_which_one
+    return selected_container
