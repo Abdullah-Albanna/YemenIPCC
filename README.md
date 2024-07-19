@@ -67,7 +67,14 @@ As simple as opening the app and pressing a button
     - Runs the app with debug mode and saves the logs to a temporary file (run `-h` to look at the file path)
   - `-h, --help`
     - Shows the help screen
-   
+ 
+# Contact
+
+ * <a href="https://wa.me/967770843377" style="text-decoration: none;">
+    WhatsApp
+    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" style="width: 20px; height: 20px; vertical-align: middle; margin-left: 5px;">
+   </a>
+
 
 # License
  Refer to the [LICENSE](https://github.com/Abdullah-Albanna/YemenIPCC/blob/app-source/LICENSE) file.
