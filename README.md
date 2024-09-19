@@ -61,6 +61,9 @@ As simple as opening the app and pressing a button
     - Runs the app with debug mode and saves the logs to a temporary file (run `-h` to look at the file path)
   - `-h, --help`
     - Shows the help screen
+   
+  - `-v, --version`
+    - Shows the app version
  
 # Contact
    
