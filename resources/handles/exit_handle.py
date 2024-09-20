@@ -15,7 +15,7 @@ def handleExit(signum=None, frame=None):
     # if "-d" in sys.argv:
     print("\033[33mExiting gracefully...\033[0m")
 
-    # Blocks any output after the exiting message
+    # Blocks any output and input after the exiting message
     with open(os.devnull, "w") as devnull:
         sys.stdout = devnull
         sys.stderr = devnull
