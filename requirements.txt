@@ -2,8 +2,15 @@ requests
 typing
 aiohttp
 loguru
-tk; sys_platform != 'darwin' # if in a mac, it can be installed with (brew install python-tk)
+tk # try (brew install python-tk) if not working in a mac
 ttwidgets; sys_platform == 'darwin'
 pywin32; sys_platform == 'win32'
 colorama; sys_platform == 'win32'
-thread==2.0.5
+python-bidi
+tinydb
+tkthread
+pydantic_settings
+cryptography
+keyring
+pillow
+psutil
