@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="http://github.com/Abdullah-Albanna/YemenIPCC/releases/latest"><img src="https://raw.githubusercontent.com/Abdullah-Albanna/YemenIPCC/app-source/Scripts/Images/YemenIPCC.png" alt="Yemen IPCC" width="220"></a>
+  <a href="http://github.com/Abdullah-Albanna/YemenIPCC/releases/latest"><img src="https://raw.githubusercontent.com/Abdullah-Albanna/YemenIPCC/app-source/resources/images/YemenIPCC.png" alt="Yemen IPCC" width="220"></a>
   <br>
   <b>Yemen IPCC</b>
   <br>
@@ -42,7 +42,7 @@ The whole thing is written in Python/Tk for now, built for Windows, Mac and Linu
 # Screenshot
 <h1 align="center">
   <br>
-  <a href="https://raw.githubusercontent.com/Abdullah-Albanna/YemenIPCC/app-source/Scripts/Images/YemenIPCC_screenshot.png"><img src="https://raw.githubusercontent.com/Abdullah-Albanna/YemenIPCC/app-source/Scripts/Images/YemenIPCC_screenshot.png" alt="Screenshot" width="1000"></a>
+  <a href="https://raw.githubusercontent.com/Abdullah-Albanna/YemenIPCC/app-source/Scripts/Images/YemenIPCC_screenshot.png"><img src="https://raw.githubusercontent.com/Abdullah-Albanna/YemenIPCC/app-source/resources/images/YemenIPCC_screenshot.png" alt="Screenshot" width="1000"></a>
   <br>
 </h1>
 
