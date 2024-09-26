@@ -600,9 +600,8 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
                         "green",
                     )
                     log_text.see(tk.END)
-                    asyncio.run(
-                        sendData("injection", device=product_type, success=True)
-                    )
+                    sendData("injection", device=product_type, success=True)
+                    
                 else:
                     logger.error("SIM is not ready, injection failed.")
 
@@ -625,9 +624,8 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
                         "red",
                     )
                     log_text.see(tk.END)
-                    asyncio.run(
-                        sendData("injection", device=product_type, success=False)
-                    )
+                    sendData("injection", device=product_type, success=False)
+                    
             else:
                 logger.info("Could not validate the injection process")
                 log_text.tag_configure("grey", foreground="grey")

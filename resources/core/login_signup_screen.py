@@ -19,6 +19,7 @@ from ..handles.exit_handle import handleExit
 from ..arabic_tk.bidid import renderBiDiText
 from ..utils.errors_stack import getStack
 from ..utils.get_os_lang import isItArabic
+from .event_loop import loop
 
 logger = YemenIPCCLogger().logger
 arabic = DataBase.get(["arabic"], [isItArabic()], "app")[0]
@@ -120,7 +121,8 @@ class LoginPage(tk.Frame):
             image=self.login_button_image,
             borderwidth=0,
             highlightthickness=0,
-            command=lambda: startThread(lambda: asyncio.run(self.onLogin()), "login", True),
+            # command=lambda: startThread(lambda: asyncio.run(self.onLogin()), "login", True),
+            command=lambda:  asyncio.run_coroutine_threadsafe(self.onLogin(), loop),
             relief="flat",
             bd=0,
         )
@@ -451,7 +453,8 @@ class SignupPage(tk.Frame):
             image=self.signup_button_image,
             borderwidth=0,
             highlightthickness=0,
-            command=lambda: startThread(lambda: self.on_signup(), "signup", True),
+            # command=lambda: startThread(lambda: self.on_signup(), "signup", True),
+            command=lambda: asyncio.run_coroutine_threadsafe(self.on_signup(), loop),
             relief="flat",
         )
         self.signup_button.place(x=129.0, y=341.0, width=224.0, height=55.0)
@@ -600,7 +603,7 @@ class SignupPage(tk.Frame):
             add=True,
         )
 
-    def on_signup(self):
+    async def on_signup(self):
 
         if self.master.current_frame != "SignupPage": 
             return
@@ -615,7 +618,7 @@ class SignupPage(tk.Frame):
         sleep(2)
         if self.valid_email and self.valid_password and self.valid_username:
 
-            respone = API().createAccount(
+            response = await API().createAccount(
                 self.signup_username_entry.get(),
                 self.signup_email_entry.get(),
                 self.signup_password_entry.get(),
@@ -625,7 +628,7 @@ class SignupPage(tk.Frame):
                 UserCredentials().ip.get("region"),
             )
 
-            if respone == "email is used for another account":
+            if response == "email is used for another account":
                 messagebox.showerror(
                     "used email",
                     (
@@ -636,7 +639,7 @@ class SignupPage(tk.Frame):
                         else f"{self.signup_email_entry.get()} is used for another account"
                     ),
                 )
-            elif respone == "malformed email":
+            elif response == "malformed email":
                 messagebox.showerror(
                     "incorrect email",
                     (
@@ -645,7 +648,7 @@ class SignupPage(tk.Frame):
                         else "please use a correct email"
                     ),
                 )
-            elif respone == "malformed username":
+            elif response == "malformed username":
                 messagebox.showerror(
                     "incorrect username",
                     (
@@ -654,7 +657,7 @@ class SignupPage(tk.Frame):
                         else "please use a correct username"
                     ),
                 )
-            elif respone == "username is already reserved":
+            elif response == "username is already reserved":
                 messagebox.showerror(
                     "used username",
                     (
@@ -665,7 +668,7 @@ class SignupPage(tk.Frame):
                         else f"{self.signup_username_entry.get()} is used for another account"
                     ),
                 )
-            elif respone == "You cannot create any more accounts":
+            elif response == "You cannot create any more accounts":
                 messagebox.showerror(
                     "no more account",
                     (
@@ -676,7 +679,7 @@ class SignupPage(tk.Frame):
                         else "you can't create accounts more than 1 \n\nplease contact me if you think this is wrong"
                     ),
                 )
-            elif respone == "success":
+            elif response == "success":
                 self.master.show_frame("LoginPage")
                 messagebox.showinfo(
                     "success",

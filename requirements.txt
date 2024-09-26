@@ -1,6 +1,6 @@
 requests
 typing
-aiohttp
+httpx
 loguru
 tk # try (brew install python-tk) if not working in a mac
 ttwidgets; sys_platform == 'darwin'

@@ -283,7 +283,7 @@ class App(tk.Tk):
             lambda: [
                 self.withdraw(),
                 self.destroy(),
-                asyncio.run(sendData("active", active=False, uid=self.UUID)),
+                sendData("active", active=False, uid=self.UUID),
                 handleExit(),
             ],
         )
@@ -292,7 +292,7 @@ class App(tk.Tk):
             self.mainloop()
         except KeyboardInterrupt:
             self.withdraw()
-            asyncio.run(sendData("active", active=False, uid=self.UUID))
+            sendData("active", active=False, uid=self.UUID)
             self.quit()
             self.destroy()
             handleExit()
@@ -382,14 +382,14 @@ class App(tk.Tk):
             lambda: quitIfNotSupported(self, self.current_version, self.UUID),
             "quitIfNotSupported",
         )
-        startThread(lambda: asyncio.run(sendData("app opens")), "Send active status")
+        startThread(lambda: sendData("app opens"), "Send active status")
 
     def updateActivity(self) -> None:
         """
         Updates the active status on the server on every 100 seconds, just to know how many actives there are.
         """
         while True:
-            asyncio.run(sendData("active", active=True, uid=self.UUID))
+            sendData("active", active=True, uid=self.UUID)
             if terminate.is_set():
                 break
             sleep(2)
@@ -479,7 +479,7 @@ class MenuBar(tk.Menu):
                 command=lambda: [
                     self.master.withdraw(),
                     self.master.destroy(),
-                    asyncio.run(sendData("active", active=False, uid=getUUID())),
+                    sendData("active", active=False, uid=getUUID()),
                     handleExit(),
                 ],
             )

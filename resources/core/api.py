@@ -1,7 +1,7 @@
 import requests
 import keyring
 import sys
-import aiohttp
+import httpx
 from tkinter import messagebox
 from typing import Literal
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -65,30 +65,43 @@ class API:
         params: dict[str, str] = None,
         timeout: int = 20,
     ):
+        transport = httpx.AsyncHTTPTransport(retries=2)
         try:
-            async with aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(timeout)
-            ) as session:
-                async with getattr(session, method)(
-                    url, headers=headers, data=data, json=json, params=params
-                ) as response:
-                    try:
-                        json_res: dict = await response.json()
-                    except Exception:
-                        json_res: dict = {}
+            async with httpx.AsyncClient(
+                timeout=timeout, transport=transport, follow_redirects=True
+            ) as client:
+                request_obj = getattr(client, method)
 
-                    try:
-                        content = await response.read()
-                    except Exception:
-                        content = None
+                if method == "get":
+                    response: httpx.Response = await request_obj(
+                        url, headers=headers, params=params
+                    )
+                else:
+                    response: httpx.Response = await request_obj(
+                        url, headers=headers, data=data, json=json, params=params
+                    )
 
-                    return json_res, response.status, content
-        except aiohttp.ClientError as ce:
+                try:
+                    json_res: dict = response.json()
+                except Exception:
+                    json_res: dict = {}
+
+                try:
+                    content = response.read()
+                except Exception:
+                    content = None
+
+                return json_res, response.status_code, content
+
+        except httpx.TimeoutException as te:
+            logger.warning(f"request timed out, error: {te}, stack: {getStack()}")
+
+        except httpx.HTTPError as he:
             logger.error(
-                f"Couldn't complete http request, error: {ce}, stacl: {getStack()}"
+                f"Couldn't complete http request, error: {he}, stack: {getStack()}"
             )
 
-    def createAccount(
+    async def createAccount(
         self, username, email, password, laptop_user, serial_number, ip, region
     ) -> Literal[
         "You cannot create any more accounts",
@@ -109,15 +122,15 @@ class API:
             "secret_key": self.encryptData(self.secret),
             "arabic": arabic,
         }
-
-        response = requests.post(
-            url=f"{self.domain}/signup",
-            json=payload,
-            timeout=20,
+        
+        url = f"{self.domain}/signup"        
+        
+        json_res, status, _ = await self.makeRequest(
+            "post", url, json=payload
         )
 
-        if response.status_code != 201:
-            error_detail = response.json().get("detail")
+        if status != 201:
+            error_detail = json_res.get("detail")
             logger.warning(
                 f"An error occurred with {username} in the creation of an account, error: {error_detail}"
             )
@@ -142,7 +155,6 @@ class API:
             "serial_number": self.encryptData(serial_number),
             "arabic": arabic,
         }
-
 
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -245,8 +257,10 @@ class API:
 
                 return "success"
 
-        except aiohttp.ClientError as e:
-            logger.error(f"An error occurred in the api, error: {e}, error stack: {getStack()}")
+        except httpx.HTTPError as e:
+            logger.error(
+                f"An error occurred in the api, error: {e}, error stack: {getStack()}"
+            )
             terminate_splash_screen.set()
             sleep(1)
             messagebox.showerror(
