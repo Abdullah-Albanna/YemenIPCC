@@ -57,7 +57,7 @@ class API:
 
     async def makeRequest(
         self,
-        method: Literal["get", "post"],
+        method: Literal["GET", "POST"],
         url: str,
         headers: dict[str, str] = None,
         data: dict[str, str] = None,
@@ -70,16 +70,15 @@ class API:
             async with httpx.AsyncClient(
                 timeout=timeout, transport=transport, follow_redirects=True
             ) as client:
-                request_obj = getattr(client, method)
 
-                if method == "get":
-                    response: httpx.Response = await request_obj(
-                        url, headers=headers, params=params
-                    )
-                else:
-                    response: httpx.Response = await request_obj(
-                        url, headers=headers, data=data, json=json, params=params
-                    )
+                response = await client.request(
+                    method=method,
+                    url=url,
+                    headers=headers,
+                    params=params,
+                    data=data,
+                    json=json,
+                )
 
                 try:
                     json_res: dict = response.json()
@@ -122,12 +121,10 @@ class API:
             "secret_key": self.encryptData(self.secret),
             "arabic": arabic,
         }
-        
-        url = f"{self.domain}/signup"        
-        
-        json_res, status, _ = await self.makeRequest(
-            "post", url, json=payload
-        )
+
+        url = f"{self.domain}/signup"
+
+        json_res, status, _ = await self.makeRequest("POST", url, json=payload)
 
         if status != 201:
             error_detail = json_res.get("detail")
@@ -164,21 +161,24 @@ class API:
         # json_response, status, _ = await self.makeRequest(
         #     "post", f"{self.domain}/login", headers=headers, data=payload
         # )
+        url = f"{self.domain}/login"
 
-        response = requests.post(f"{self.domain}/login", headers=headers, data=payload)
-
-        json_response = response.json()
-        status = response.status_code
+        # response = requests.post(f"{self.domain}/login", headers=headers, data=payload)
+        
+        json_res, status, _ = await self.makeRequest("POST", url, headers=headers ,data=payload)
+        
+        # json_response = response.json()
+        # status = response.status_code
 
         if status != 200:
-            error_detail = json_response.get("detail")
+            error_detail = json_res.get("detail")
             logger.warning(
                 f"A error occurred in the login proccess, error: {error_detail}"
             )
 
             return error_detail
 
-        keyring.set_password("yemenipcc", username, json_response.get("access_token"))
+        keyring.set_password("yemenipcc", username, json_res.get("access_token"))
         DataBase.add(["username"], [username], "account")
         logger.success("successfully logged in")
 
@@ -213,7 +213,7 @@ class API:
         #         content = await response.read()
 
         json_res, status, content = await self.makeRequest(
-            "get", url, headers=headers, params=payload
+            "GET", url, headers=headers, params=payload
         )
 
         if status != 200:
@@ -237,7 +237,7 @@ class API:
 
         try:
             json_response, status, _ = await self.makeRequest(
-                "post", f"{self.domain}/refresh_token", data=payload
+                "POST", f"{self.domain}/refresh_token", data=payload
             )
             # qst = requests.post(f"https://{self.domain}/refresh_token", data=payload)
             # json_response = qst.json()
@@ -277,7 +277,7 @@ class API:
         }
 
         json_response, status, _ = await self.makeRequest(
-            "get", f"{self.domain}/users", data=payload
+            "GET", f"{self.domain}/users", data=payload
         )
 
         if status != 200:
@@ -298,7 +298,7 @@ class API:
         }
 
         json_response, status, _ = await self.makeRequest(
-            "post", f"{self.domain}/resend_verify", data=payload
+            "POST", f"{self.domain}/resend_verify", data=payload
         )
 
         if status != 200:

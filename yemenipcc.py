@@ -1,6 +1,7 @@
 import os
 import platform
 import signal
+import asyncio
 
 from resources.config.version import CURRENT_VERSION
 from resources.core.main_window import App
@@ -15,7 +16,8 @@ from resources.utils.set_exec_perm import setExecutePermission
 from resources.utils.set_font import setFont
 from resources.utils.get_os_lang import isItArabic
 
-if __name__ == "__main__":
+
+async def main():
     DataBase.addOnce(["arabic"], [isItArabic()], "app")
 
     DataBase.addOnce(
@@ -84,4 +86,7 @@ if __name__ == "__main__":
     setExecutePermission()
 
     # Executes the main program
-    App()
+    await App().start()
+
+if __name__ == "__main__":
+    asyncio.run(main())

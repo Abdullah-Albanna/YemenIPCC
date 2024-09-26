@@ -14,15 +14,18 @@ from ..utils.logger_config_class import YemenIPCCLogger
 from ..database.db import DataBase
 from ..utils.images import Images
 
-from ..thread_managment.thread_starter import startThread
+# from ..thread_managment.thread_starter import startThread
 from ..handles.exit_handle import handleExit
 from ..arabic_tk.bidid import renderBiDiText
 from ..utils.errors_stack import getStack
 from ..utils.get_os_lang import isItArabic
-from .event_loop import loop
+from ..utils.event_loop import NewEventLoop
 
 logger = YemenIPCCLogger().logger
 arabic = DataBase.get(["arabic"], [isItArabic()], "app")[0]
+event = NewEventLoop()
+
+loop = event.getLoop()
 
 
 class Circle:

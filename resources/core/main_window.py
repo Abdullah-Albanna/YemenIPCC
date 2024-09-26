@@ -17,6 +17,7 @@ from ..database.db import DataBase
 from ..utils.logger_config_class import YemenIPCCLogger
 from .api import API
 from ..utils.images import Images
+from ..utils.event_loop import NewEventLoop
 
 from .changing_option import changeWhichOne, changeBundle
 from ..checkers.check_for_update import checkForUpdateButton
@@ -55,6 +56,10 @@ dark_color, medium_color, light_color, text_color = DataBase.get(
 )
 
 validate_status = DataBase.get(["validate"], [True], "injection")[0]
+
+event = NewEventLoop()
+
+loop = event.getLoop()
 
 
 class LogScrollBar(tk.Scrollbar):
@@ -189,13 +194,15 @@ class App(tk.Tk):
         super().__init__()
         self.current_version = CURRENT_VERSION
         self.UUID = getUUID()
+        
+    async def start(self):
         self.withdraw()
 
         windowCreation(self)
         
         tkthread.call(splash)
 
-        asyncio.run(self.loginVerify())
+        await self.loginVerify()
 
         self.focus()
         self.tempdir = (
@@ -261,7 +268,7 @@ class App(tk.Tk):
 
         self.containerTypeLabel(self.which_one_frame)
 
-        MenuBar(self, self.log_text, self.current_version)
+        await MenuBar(self, self.log_text, self.current_version).create()
 
         RadioButton(
             self.which_one_frame,
@@ -452,6 +459,10 @@ class MenuBar(tk.Menu):
         self.master.config(menu=self, bg=medium_color)
         # self.validate_var = tk.BooleanVar(value=True)
         self.validate_var = validate_status
+        self.log_text = log_text
+        self.current_version = current_version
+    
+    async def create(self):
 
         # Create and add menus
         self.filemenu = self.addMenu(renderBiDiText("ملف") if arabic else "File")
@@ -467,7 +478,7 @@ class MenuBar(tk.Menu):
         self.addCommand(
             self.filemenu,
             label=renderBiDiText("فتح") if arabic else "open",
-            command=lambda: injectFromFile(log_text),
+            command=lambda: injectFromFile(self.log_text),
         )
 
         # It looks bad in Macs :(
@@ -487,13 +498,13 @@ class MenuBar(tk.Menu):
         self.addCommand(
             self.toolsmenu,
             label=renderBiDiText("تنضيف") if arabic else "clean",
-            command=lambda: cleanRemove(self.master, log_text),
+            command=lambda: cleanRemove(self.master, self.log_text),
         )
 
         self.addCommand(
             self.toolsmenu,
             label=renderBiDiText("إعادة الاقتران") if arabic else "re-pair",
-            command=lambda: repairiPhone(log_text),
+            command=lambda: repairiPhone(self.log_text),
         )
 
         # Add a checkbutton to the Tools menu
@@ -509,13 +520,13 @@ class MenuBar(tk.Menu):
         self.addCommand(
             self.toolsmenu,
             label=renderBiDiText("إعادة التشغيل") if arabic else "restart",
-            command=lambda: DeviceManager(log_text=log_text).systemActions("restart"),
+            command=lambda: DeviceManager(log_text=self.log_text).systemActions("restart"),
         )
 
         self.addCommand(
             self.toolsmenu,
             label=renderBiDiText("إيقاف التشغيل") if arabic else "shutdown",
-            command=lambda: DeviceManager(log_text=log_text).systemActions("shutdown"),
+            command=lambda: DeviceManager(log_text=self.log_text).systemActions("shutdown"),
         )
 
         self.toolsmenu.add_separator()
@@ -536,7 +547,7 @@ class MenuBar(tk.Menu):
         self.addCommand(
             self.accountmenu,
             label=renderBiDiText("معلومات الحساب") if arabic else "account info",
-            command=lambda: asyncio.run(self.showAccountInfo()),
+            command=lambda: asyncio.run_coroutine_threadsafe(self.showAccountInfo(), loop),
         )
 
         self.accountmenu.add_separator()
@@ -562,13 +573,13 @@ class MenuBar(tk.Menu):
                     f"""تطبيق بسيط لأتمتة عملية إدخال ملفات الشبكة \n إلى أجهزة الايفون في اليمن
 \n
 المؤلف: عبدالله البناء
- الإصدار: {current_version}
+ الإصدار: {self.current_version}
         """
                 )
             )
 
             # arabic_help = textwrap.wrap(arabic_help, width=5)  # Adjust the width to fit your Tkinter widget
-            english_help = f"Yemen IPCC \n\n A simple app to automate the process of injecting the network configuration files (.ipcc) to the iPhone devices in Yemen\n\n\n author: Abdullah Al-Banna \n version: {current_version}"
+            english_help = f"Yemen IPCC \n\n A simple app to automate the process of injecting the network configuration files (.ipcc) to the iPhone devices in Yemen\n\n\n author: Abdullah Al-Banna \n version: {self.current_version}"
 
             self.addCommand(
                 self.helpmenu,

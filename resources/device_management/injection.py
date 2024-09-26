@@ -23,6 +23,7 @@ from ..utils.get_bin_path import BinaryPaths
 from .device_manager import DeviceManager
 from ..database.db import DataBase
 from ..core.api import API
+from ..utils.event_loop import NewEventLoop
 
 from ..thread_managment.thread_starter import startThread
 from ..checkers.check_for_internet import checkInternetConnection
@@ -49,6 +50,9 @@ ideviceinstaller = bin_paths["ideviceinstaller"]
 idevicediagnostics = bin_paths["idevicediagnostics"]
 idevicesyslog = bin_paths["idevicesyslog"]
 kwargs = bin_paths["kwargs"]
+
+event = NewEventLoop()
+loop = event.getLoop()
 
 
 def readSysLog(log_queue, stop_event) -> None:
@@ -135,7 +139,7 @@ async def downloadFile(iPhone_model, iPhone_version, bundle, container):
     return response
 
 
-def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
+async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
     """
     This is the main injection process.
 
@@ -234,14 +238,12 @@ def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
 
         # URL for downloading IPCC
         # url = f"https://raw.githubusercontent.com/Abdullah-Albanna/YemenIPCC/master/{replace_space(product_type)}/iOS%20{product_version}/Using%20{selected_container}/{replace_space(product_type)}_iOS_{product_version}_{selected_bundle}.ipcc"
-        download_process = asyncio.run(
-            downloadFile(
+        download_process = await downloadFile(
                 replace_space(product_type),
                 product_version,
                 selected_bundle,
                 selected_container,
             )
-        )
 
         window.update_idletasks()
         # downloadable = asyncio.run(isFileDownloadable(url))
@@ -688,11 +690,8 @@ def injection(window: tk.Tk, log_text: tk.Text) -> None:
         selected_bundle (str): The selected bundle name.
         selected_container (str): The selected option name.
     """
-
-    # The thread has to be run from here, or the progress bar won't work well
-    startThread(
-        lambda: removingAndInjectingIPCC(window, log_text), "removingAndInjectingIPCC"
-    )
+    
+    asyncio.run_coroutine_threadsafe(removingAndInjectingIPCC(window, log_text), loop)
 
 
 def injectFromFile(log_text) -> None:

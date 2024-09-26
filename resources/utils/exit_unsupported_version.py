@@ -1,5 +1,4 @@
 from tkinter import messagebox
-import asyncio
 import webbrowser
 from time import sleep
 
@@ -44,7 +43,7 @@ def quitIfNotSupported(window, current_version, UUID) -> None:
                     ),
                 ):
                     window.withdraw()
-                    asyncio.run(sendData("active", active=False, uid=UUID))
+                    sendData("active", active=False, uid=UUID)
                     window.destroy()
                     break
                 else:
@@ -52,7 +51,7 @@ def quitIfNotSupported(window, current_version, UUID) -> None:
                         f"https://github.com/{Env().repo}/releases/latest"
                     )
                     window.withdraw()
-                    asyncio.run(sendData("active", active=False, uid=UUID))
+                    sendData("active", active=False, uid=UUID)
                     window.destroy()
                     break
         if terminate.is_set():
