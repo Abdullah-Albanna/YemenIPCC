@@ -1,28 +1,33 @@
 import sys
 import os
 from pathlib import Path
-from functools import cache
 
 
-@cache
 def getAppDirectory() -> str:
     """
     Gets the script or the
     executable path
     """
     if getattr(sys, "frozen", False):
-        # Running in a bundle
+        # running in a bundle
         bundle_dir = os.path.dirname(sys.executable)
-        
+
     else:
-        # Running in a normal Python environment
+        # running in a normal Python environment
         bundle_dir = os.path.dirname(os.path.abspath(__file__))
-        
-    if bundle_dir.endswith("utils"):
-        bundle_dir = bundle_dir[: -len("resources/utils")]
+
+    # keeps going back until the "resources" folder is in the listing of that dir
+    while "resources" not in os.listdir(bundle_dir):
+        bundle_dir = str(Path(bundle_dir).parent)
 
     return bundle_dir
 
-@cache
+
 def getExecutablePath():
-    return str(Path(os.path.abspath(sys.argv[0])).parent)
+    """
+    Gets the actual executable binary path, whether it was frozen or not
+    """
+    bin_path = sys.argv[0]
+    full_bin_path = os.path.abspath(bin_path)
+
+    return str(Path(full_bin_path).parent)
