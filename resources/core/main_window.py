@@ -10,7 +10,6 @@ from tkinter import messagebox
 from PIL import ImageTk
 from .. import Button
 from time import sleep
-from tempfile import gettempdir
 from typing import List
 
 from ..database.db import DataBase
@@ -31,7 +30,7 @@ from ..utils.set_font import getFont
 from ..misc.resize_dpi import DPIResize
 from ..device_management.injection import injection, disableIfRunning, injectFromFile
 from ..core.fixing_the_window import initialize
-from ..thread_managment.thread_starter import startThread
+from ..thread_management.thread_starter import startThread
 from ..checkers.check_for_update import checkForUpdate
 from ..checkers.check_for_internet import checkInternetConnection
 from ..device_management.device_manager import updateButtonStateThreaded, updateLabelStateThreaded, DeviceManager
@@ -40,10 +39,11 @@ from .login_signup_screen import main_
 from ..utils.splash_screen import splash
 from ..utils.errors_stack import getStack
 from ..utils.get_os_lang import isItArabic
+from ..utils.apple_drivers import AppleDrivers
 
 from ..utils.get_system import system
-from ..thread_managment.thread_terminator_var import terminate
-from ..thread_managment.thread_terminator_var import terminate_splash_screen
+from ..thread_management.thread_terminator_var import terminate
+from ..thread_management.thread_terminator_var import terminate_splash_screen
 from ..config.version import CURRENT_VERSION
 
 logger = YemenIPCCLogger().logger
@@ -204,12 +204,9 @@ class App(tk.Tk):
 
         await self.loginVerify()
 
+        asyncio.run_coroutine_threadsafe(self.checkDrivers(), loop)
+
         self.focus()
-        self.tempdir = (
-            gettempdir()
-            if system == "Windows"
-            else os.path.join(os.path.expanduser("~/cache"))
-        )
         self.bundles: List[str] = [
             "CellularSouthLTE",
             "USCellularLTE",
@@ -285,6 +282,7 @@ class App(tk.Tk):
         self.runThreads()
 
         initialize(self)
+
         self.protocol(
             "WM_DELETE_WINDOW",
             lambda: [
@@ -318,13 +316,18 @@ class App(tk.Tk):
             main_("LoginPage")
 
         elif username:
+            top = tk.Toplevel()
+            top.withdraw()
+            top.attributes("-topmost", 1)
+
             if not checkInternetConnection():
                 messagebox.showerror("No Internet", 
                                      renderBiDiText("لايوجد اتصال بالانترنت") if arabic
-                                    else "Make sure to connect to the internet first")
+                                    else "Make sure to connect to the internet first", parent=top)
             
                 terminate_splash_screen.set()
-                sys.exit(1)
+
+                handleExit(status_code=1)
             
             try:
                 response = await API().refreshToken(
@@ -348,7 +351,7 @@ class App(tk.Tk):
                             else "something went wrong with your account"
                         ),
                     )
-                    sys.exit(1)
+                    handleExit(status_code=1)
 
             except Exception as e:
                 terminate_splash_screen.set()
@@ -362,7 +365,7 @@ class App(tk.Tk):
                         else "something went wrong, try again later"
                     ),
                 )
-                sys.exit(1)
+                handleExit(status_code=1)
 
     def runThreads(self):
 
@@ -413,6 +416,21 @@ class App(tk.Tk):
             fg=text_color,
         ).pack(side="top", fill="both")
 
+    async def checkDrivers(self):
+        sleep(5) # wait for the app to run
+        apple = AppleDrivers(self)
+
+        if system == "Windows":
+            checking_result = apple.checkInstalledAppleDrivers()
+            
+            if checking_result:
+                if messagebox.askyesno("Drivers not Found", "Apple driver are not installed, should I install it?"):
+                    asyncio.run_coroutine_threadsafe(apple.installAppleDrivers(), loop)
+            
+            elif checking_result == "error":
+                messagebox.showerror("Drivers Error", "couldn't check if necessary drivers are installed")
+
+                handleExit(status_code=1)
 
 def windowCreation(window: tk.Tk) -> None:
     """
@@ -458,7 +476,7 @@ class MenuBar(tk.Menu):
         self.current_version = current_version
         self.master.config(menu=self, bg=medium_color)
         # self.validate_var = tk.BooleanVar(value=True)
-        self.validate_var = validate_status
+        self.validate_var = tk.BooleanVar(value=validate_status)
         self.log_text = log_text
         self.current_version = current_version
     

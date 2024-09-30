@@ -7,4 +7,5 @@ class ErrorCodes(Enum):
     INVALID_INPUT = 2
     NETWORK_ERROR = 3
     PERMISSION_DENIED = 4
+    TIMEOUT = 5
     UNKNOWN_ERROR = 99

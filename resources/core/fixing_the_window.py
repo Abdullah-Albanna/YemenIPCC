@@ -4,7 +4,7 @@ import tkinter as tk
 
 from ..utils.logger_config_class import YemenIPCCLogger
 
-from ..thread_managment.thread_terminator_var import terminate_splash_screen
+from ..thread_management.thread_terminator_var import terminate_splash_screen
 from ..utils.get_system import system
 
 logger = YemenIPCCLogger().logger

@@ -1,4 +1,3 @@
-import requests
 import keyring
 import sys
 import httpx
@@ -17,8 +16,9 @@ from ..config.secrets import Env
 
 from ..utils.errors_stack import getStack
 from ..utils.get_os_lang import isItArabic
+from ..handles.exit_handle import handleExit
 
-from ..thread_managment.thread_terminator_var import terminate_splash_screen
+from ..thread_management.thread_terminator_var import terminate_splash_screen
 
 logger = YemenIPCCLogger().logger
 arabic: bool = DataBase.get(["arabic"], [isItArabic()], "app")[0]
@@ -267,8 +267,8 @@ class API:
                 "error",
                 "something went down, maybe the server is shut, please try again later",
             )
-            sys.exit(1)
-
+            handleExit(status_code=1)
+            
     async def grabUserInfo(self) -> dict | Literal["user does not exists"]:
         payload = {
             "token": keyring.get_password(

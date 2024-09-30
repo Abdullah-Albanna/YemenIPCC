@@ -1,6 +1,6 @@
 import json
 from tinydb import JSONStorage, TinyDB, where
-import os
+
 
 
 from ..utils.get_app_dir import getExecutablePath
@@ -22,11 +22,13 @@ class IndentedJSONStorage(JSONStorage):
             return {}
 
 
-app_dir: str = getExecutablePath()
-if app_dir[-1].isdigit():
-    app_dir = os.getcwd()
+app_dir = getExecutablePath()
 
-db_file_path = os.path.join(app_dir, "settings.json")
+# if app_dir.parts[-1].isdigit():
+#     app_dir =Path.cwd()
+
+db_file_path = app_dir / "settings.json"
+
 db = TinyDB(db_file_path, storage=IndentedJSONStorage)
 
 

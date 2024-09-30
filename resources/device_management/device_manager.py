@@ -9,7 +9,7 @@ from ..utils.get_bin_path import BinaryPaths
 from ..database.dict_control import DictControl
 from ..database.db import DataBase
 
-from ..thread_managment.thread_starter import startThread
+from ..thread_management.thread_starter import startThread
 from ..utils.managed_process import managedProcess
 from ..misc.resize_dpi import DPIResize
 from ..arabic_tk.bidid import renderBiDiText
@@ -17,7 +17,7 @@ from ..utils.set_font import getFont
 from ..utils.errors_stack import getStack
 from ..utils.get_os_lang import isItArabic
 
-from ..thread_managment.thread_terminator_var import terminate
+from ..thread_management.thread_terminator_var import terminate
 from ..utils.get_system import system
 
 
@@ -53,14 +53,16 @@ class DeviceManager:
         self.logged_product_type: str = ""
         self.logged_product_version: str = ""
         self.logged_errors = set()
-
+        
     def systemActions(self, action: str) -> None:
         """
         Controls the iPhone to restart or shutdown or even sleep
         """
+        
         with managedProcess([idevicediagnostics, action], **kwargs) as device_process:
             if device_process is None:
                 return
+            
             stdout = device_process.communicate()[0]
             stderr = device_process.communicate()[1]
             result = stderr + stdout
@@ -73,13 +75,14 @@ class DeviceManager:
                 color = "yellow"
                 result = renderBiDiText("لم يتم العثور على جهاز متصل") if arabic else result
             else:
+                color = "green"
                 logger.debug(result)
 
             self.log_text.tag_configure(color, foreground=color)
             self.log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
             self.log_text.insert(tk.END, f"\n{result}\n", color)
             self.log_text.see(tk.END)
-
+        
     def validateDevice(self) -> bool:
         """
         Checks if the device is really paired
@@ -255,6 +258,7 @@ class DeviceManager:
         while True:
             if terminate.is_set():
                 break
+            
             plugged = self.checkIfPlugged()
             running = DataBase.get(["running"], [False], "injection")[0]
 
@@ -272,6 +276,7 @@ class DeviceManager:
         """
 
         while True:
+            
             plugged = self.checkIfPlugged()
 
             # if it is plugged and returns False on the validation, we need to trust the device

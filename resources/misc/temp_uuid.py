@@ -1,10 +1,10 @@
-import os
+from pathlib import Path
 import uuid
 
 
 from ..utils.get_app_dir import getAppDirectory
 
-app_dir = getAppDirectory()
+uuid_path = getAppDirectory() / "UUID"
 
 
 def generateUniqueUID() -> str:
@@ -31,23 +31,17 @@ def createNewUUID() -> None:
     """
     Gets the new UUID and save it into the "UUID" file
     """
-
-    if not os.path.exists(os.path.join(app_dir, "UUID")):
-        with open(os.path.join(app_dir, "UUID"), "w") as uuid:
+    uuid_path.write_text(generateUniqueUID()) if not uuid_path.exists() else ''
+    
+    with open(uuid_path, "r+") as uuid:
+        if not isUUID(uuid.read()):
+            uuid.seek(0)
+            uuid.truncate()
             uuid.write(generateUniqueUID())
-            uuid.close()
-    else:
-        with open(os.path.join(app_dir, "UUID"), "r+") as uuid:
-            if not isUUID(uuid.read()):
-                uuid.seek(0)
-                uuid.truncate()
-                uuid.write(generateUniqueUID())
 
 
 def getUUID() -> str:
     """
     Gets the content of the file "UUID"
     """
-    with open(os.path.join(app_dir, "UUID"), "r") as uuid:
-        uuid_content = uuid.read()
-        return uuid_content
+    return uuid_path.read_text()

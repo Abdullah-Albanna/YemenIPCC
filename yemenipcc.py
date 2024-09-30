@@ -2,6 +2,7 @@ import os
 import platform
 import signal
 import asyncio
+from pathlib import Path
 
 from resources.config.version import CURRENT_VERSION
 from resources.core.main_window import App
@@ -16,8 +17,8 @@ from resources.utils.set_exec_perm import setExecutePermission
 from resources.utils.set_font import setFont
 from resources.utils.get_os_lang import isItArabic
 
-
 async def main():
+
     DataBase.addOnce(["arabic"], [isItArabic()], "app")
 
     DataBase.addOnce(
@@ -28,7 +29,7 @@ async def main():
 
     DataBase.addOnce(["enable", "custom_url"], [True, ""], table="discord")
 
-    arabic = DataBase.get(["arabic"], [isItArabic()], table="app")[0]
+    DataBase.get(["arabic"], [isItArabic()], table="app")[0]
 
     # Resets the bundle to default on each start
     DataBase.add(
@@ -60,7 +61,7 @@ async def main():
     # another directory
     app_directory = getAppDirectory()
     logger.debug(f"App directory is: {app_directory}")
-    logger.debug(f"Current directory: {os.getcwd()}")
+    logger.debug(f"Current directory: {Path.cwd()}")
 
     # Logs the distro
     if system == "Linux":
@@ -73,20 +74,24 @@ async def main():
 
     # If the current running directory is in the macOS bundle app, or there is no folder called "resources" in the
     # current directory then change the current directory to the executed script directory
-    if app_directory.endswith("/Content/MacOS") or not os.path.exists(
-        os.path.join(os.getcwd(), "resources")
+    if (
+        str(app_directory).endswith("/Content/MacOS")
+        # the reason why I'm also including the __init__.py is to really make sure we are in the right directory
+        # if a person has a folder called "resources" in the same where the shell ran, this would cause errors
+        or not (Path.cwd() / "resources" / "__init__.py").exists()
     ):
         os.chdir(app_directory)
         logger.debug(f"Switched directory to {app_directory}")
 
     # Writes the app version in a __version__ file
-    with open(os.path.join(".", "__version__"), "w") as file:
-        file.write(CURRENT_VERSION)
+    # with open(os.path.join(".", "__version__"), "w") as file:
+        # file.write(CURRENT_VERSION)
 
     setExecutePermission()
 
     # Executes the main program
     await App().start()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

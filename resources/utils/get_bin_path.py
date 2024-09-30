@@ -9,34 +9,39 @@ from .get_system import system
 
 class BinaryPaths:
     def __init__(self):
-        self.ideviceinfo = None
-        self.ideviceinstaller = None
-        self.idevicediagnostics = None
-        self.idevicesyslog = None
-        self.idevicepair = None
-        self.idevice_id = None
-        self.env = None
-        self.kwargs = None
+        self.ideviceinfo: str = None
+        self.ideviceinstaller: str = None
+        self.idevicediagnostics: str = None
+        self.idevicesyslog: str = None
+        self.idevicepair: str = None
+        self.idevice_id: str = None
+        self.env: dict = None
+        self.kwargs: dict = None
 
-        self.base_dir = os.path.join(getAppDirectory(), "resources", "bin")
+        # self.base_dir = os.path.join(getAppDirectory(), "resources", "bin")
+        self.base_dir = getAppDirectory() / "resources" / "bin"
 
         self.setupPaths()
 
     def setupPaths(self) -> None:
         # What these three do is specifing the executeable binary for each system so the user do not have to install anything
         if system == "Mac":
-            bin_base_dir = os.path.join(self.base_dir, "mac_binary")
+            # bin_base_dir = os.path.join(self.base_dir, "mac_binary")
+            bin_base_dir =self.base_dir / "mac_binary"
             lib_path_env = "DYLD_LIBRARY_PATH"
 
         elif system == "Linux":
-            bin_base_dir = os.path.join(self.base_dir, "linux_binary")
+            # bin_base_dir = os.path.join(self.base_dir, "linux_binary")
+            bin_base_dir = self.base_dir / "linux_binary"
             lib_path_env = "LD_LIBRARY_PATH"
+            
         elif system == "Windows":
-            bin_base_dir = os.path.join(self.base_dir, "windows_binary")
+            # bin_base_dir = os.path.join(self.base_dir, "windows_binary")
+            bin_base_dir = self.base_dir / "windows_binary"
 
         if system in ["Mac", "Linux"]:
             os.environ[lib_path_env] = (
-                f'{os.path.join(bin_base_dir, "lib")}:${lib_path_env}'
+                f'{bin_base_dir / "lib"}:${lib_path_env}'
             )
             self.env = os.environ.copy()
 
@@ -50,23 +55,17 @@ class BinaryPaths:
         elif system == "Windows":
             file_extension = ".exe"
 
-        self.idevice_id = os.path.join(bin_base_dir, f"idevice_id{file_extension}")
+        self.idevice_id = bin_base_dir / f"idevice_id{file_extension}"
 
-        self.idevicediagnostics = os.path.join(
-            bin_base_dir, f"idevicediagnostics{file_extension}"
-        )
+        self.idevicediagnostics = bin_base_dir / f"idevicediagnostics{file_extension}"
 
-        self.ideviceinfo = os.path.join(bin_base_dir, f"ideviceinfo{file_extension}")
+        self.ideviceinfo = bin_base_dir / f"ideviceinfo{file_extension}"
 
-        self.ideviceinstaller = os.path.join(
-            bin_base_dir, f"ideviceinstaller{file_extension}"
-        )
+        self.ideviceinstaller = bin_base_dir / f"ideviceinstaller{file_extension}"
 
-        self.idevicepair = os.path.join(bin_base_dir, f"idevicepair{file_extension}")
+        self.idevicepair = bin_base_dir / f"idevicepair{file_extension}"
         
-        self.idevicesyslog = os.path.join(
-            bin_base_dir, f"idevicesyslog{file_extension}"
-        )
+        self.idevicesyslog = bin_base_dir / f"idevicesyslog{file_extension}"
 
         # if system == "Mac":
         #     mac_base_dir = os.path.join(self.base_dir, "mac_binary")
@@ -152,7 +151,7 @@ class BinaryPaths:
         if system == "Windows":
             self.kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW # type: ignore
 
-    def getPaths(self) -> Dict[str, any]:
+    def getPaths(self) -> Dict[str, dict | str]:
         """
         Returns the executable binary paths, required subprocess kwargs, the env for the binary to look for the library
         """

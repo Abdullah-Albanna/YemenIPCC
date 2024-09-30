@@ -2,7 +2,6 @@ from loguru import logger
 import os
 import subprocess
 import sys
-import re
 import argparse
 from datetime import datetime
 from pathlib import Path
@@ -10,7 +9,6 @@ from tempfile import gettempdir
 
 
 from ..handles.discord_handler import DiscordHandler
-from ..config.secrets import Env
 from ..database.dict_control import DictControl
 
 from .get_app_dir import getExecutablePath
@@ -30,6 +28,7 @@ class YemenIPCCLogger:
         # self.DISCORD_WEBHOOK_URL = self.setDiscordVariables()[0]
         self.is_debug_on = {"result": False}
         self.logger = logger.patch(self.sendToDiscord)
+        self.logs_path = getExecutablePath() / "logs.txt"
 
     def getTempdir(self) -> str:
         """
@@ -38,7 +37,7 @@ class YemenIPCCLogger:
         return (
             gettempdir()
             if system == "Windows"
-            else os.path.join(os.path.expanduser("~/.cache"))
+            else Path("~/.cache").expanduser().resolve()
         )
 
     # def getDiscordInfo(self) -> dict:
@@ -210,14 +209,12 @@ class YemenIPCCLogger:
         )
 
         if file_logging:
-            temp_log_dir = os.path.join(getExecutablePath(), "logs.txt")
-            if not os.path.exists(temp_log_dir):
-                if not os.path.join(self.tempdir, "yemenipcc"):
-                    os.mkdir(os.path.join(self.tempdir, "yemenipcc"))
-                with open(temp_log_dir, "w"):
-                    pass
+    
+            if not self.logs_path.exists():
+                self.logs_path.touch
+                
             self.logger.add(
-                temp_log_dir,
+                self.logs_path,
                 mode="w",
                 format=log_format,
                 level="DEBUG" if debug else "ERROR",
@@ -234,11 +231,13 @@ class YemenIPCCLogger:
         """
         Sets up the app arguments
         """
+        
         parser = argparse.ArgumentParser(
             description="Yemen IPCC - An application to inject the network configuration files (.ipcc) to the iPhone devices",
             usage="%(prog)s [options]",
         )
-        tempath = Path(getExecutablePath()) / "logs.txt"
+        
+        
         parser.add_argument(
             "-d", "--debug", action="store_true", help="Enable debug mode"
         )
@@ -246,7 +245,7 @@ class YemenIPCCLogger:
             "-f",
             "--file",
             action="store_true",
-            help=f"Saves the debug logs to a file in {tempath} (Must be used with -d)",
+            help=f"Saves the debug logs to a file in {self.logs_path} (Must be used with -d)",
         )
         parser.add_argument(
             "-v", "--version", action="version", version=f"%(prog)s {CURRENT_VERSION}"

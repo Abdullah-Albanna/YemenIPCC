@@ -8,7 +8,7 @@ from ..utils.logger_config_class import YemenIPCCLogger
 from ..utils.get_bin_path import BinaryPaths
 from ..database.db import DataBase
 
-from ..thread_managment.thread_starter import startThread
+from ..thread_management.thread_starter import startThread
 from ..utils.managed_process import managedProcess
 from ..arabic_tk.bidid import renderBiDiText
 from ..utils.errors_stack import getStack

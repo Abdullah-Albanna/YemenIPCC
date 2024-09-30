@@ -4,9 +4,9 @@ from .. import (
     arabic_new_iphone_message,
 )
 
+import shutil
 import subprocess
 import os
-import aiohttp
 import asyncio
 import textwrap
 import tkinter as tk
@@ -14,6 +14,7 @@ from tkinter import messagebox, filedialog
 from tkinter.ttk import Progressbar, Style
 from tempfile import TemporaryDirectory
 from threading import Event
+from pathlib import Path
 from time import sleep
 from typing import List
 
@@ -25,7 +26,7 @@ from ..database.db import DataBase
 from ..core.api import API
 from ..utils.event_loop import NewEventLoop
 
-from ..thread_managment.thread_starter import startThread
+from ..thread_management.thread_starter import startThread
 from ..checkers.check_for_internet import checkInternetConnection
 from ..handles.send_data import sendData
 from ..utils.managed_process import managedProcess
@@ -34,8 +35,9 @@ from ..utils.fix_ssl import fixSSL
 from ..arabic_tk.bidid import renderBiDiText
 from ..utils.errors_stack import getStack
 from ..utils.get_os_lang import isItArabic
+from ..utils.get_app_dir import getAppDirectory
 
-from ..thread_managment.thread_terminator_var import terminate
+from ..thread_management.thread_terminator_var import terminate
 
 arabic = DataBase.get(["arabic"], [isItArabic()], "app")[0]
 medium_color, light_color, text_color = DataBase.get(
@@ -77,52 +79,52 @@ def readSysLog(log_queue, stop_event) -> None:
         logger.debug("Stoppted readSysLog")
 
 
-async def isFileDownloadable(url) -> bool:
-    """
-    Checks if the file exists or not by testing the downloading ability
-    """
-    # We well use aiohttp with async to get the fastest result
-    connector = aiohttp.TCPConnector(force_close=True)
-    async with aiohttp.ClientSession(connector=connector) as session:
-        try:
-            async with session.head(url, allow_redirects=True) as response:
-                # Check if the request was successful
-                if response.status != 200:
-                    return False
+# async def isFileDownloadable(url) -> bool:
+#     """
+#     Checks if the file exists or not by testing the downloading ability
+#     """
+#     # We well use aiohttp with async to get the fastest result
+#     connector = aiohttp.TCPConnector(force_close=True)
+#     async with aiohttp.ClientSession(connector=connector) as session:
+#         try:
+#             async with session.head(url, allow_redirects=True) as response:
+#                 # Check if the request was successful
+#                 if response.status != 200:
+#                     return False
 
-                # Get the content type
-                content_type = response.headers.get("Content-Type", "").lower()
+#                 # Get the content type
+#                 content_type = response.headers.get("Content-Type", "").lower()
 
-                # Check if the content type is not HTML
-                if "text/html" in content_type:
-                    return False
+#                 # Check if the content type is not HTML
+#                 if "text/html" in content_type:
+#                     return False
 
-                # Check for Content-Disposition header to see if it's an attachment
-                content_disposition = response.headers.get(
-                    "Content-Disposition", ""
-                ).lower()
-                if "attachment" in content_disposition:
-                    return True
+#                 # Check for Content-Disposition header to see if it's an attachment
+#                 content_disposition = response.headers.get(
+#                     "Content-Disposition", ""
+#                 ).lower()
+#                 if "attachment" in content_disposition:
+#                     return True
 
-                # If there is no Content-Disposition header, infer from content type
-                if content_type in ["application/octet-stream", "application/zip"]:
-                    return True
+#                 # If there is no Content-Disposition header, infer from content type
+#                 if content_type in ["application/octet-stream", "application/zip"]:
+#                     return True
 
-                return False
+#                 return False
 
-        except aiohttp.ClientSSLError as e:
-            logger.error(f"SSL Error: {e}, stack: {getStack()}")
-            fixSSL()
-            return False
+#         except aiohttp.ClientSSLError as e:
+#             logger.error(f"SSL Error: {e}, stack: {getStack()}")
+#             fixSSL()
+#             return False
 
-        except aiohttp.ClientError as e:
-            logger.error(
-                f"An error occurred in the checking for the avalibility of a bundle: {e}, stack: {getStack()}"
-            )
-            return False
+#         except aiohttp.ClientError as e:
+#             logger.error(
+#                 f"An error occurred in the checking for the avalibility of a bundle: {e}, stack: {getStack()}"
+#             )
+#             return False
 
-        finally:
-            await session.close()
+#         finally:
+#             await session.close()
 
 
 def replace_space(string):
@@ -239,11 +241,11 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
         # URL for downloading IPCC
         # url = f"https://raw.githubusercontent.com/Abdullah-Albanna/YemenIPCC/master/{replace_space(product_type)}/iOS%20{product_version}/Using%20{selected_container}/{replace_space(product_type)}_iOS_{product_version}_{selected_bundle}.ipcc"
         download_process = await downloadFile(
-                replace_space(product_type),
-                product_version,
-                selected_bundle,
-                selected_container,
-            )
+            replace_space(product_type),
+            product_version,
+            selected_bundle,
+            selected_container,
+        )
 
         window.update_idletasks()
         # downloadable = asyncio.run(isFileDownloadable(url))
@@ -316,8 +318,9 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
                 arabic_new_iphone_message if arabic else new_iPhone_message,
             )
             is_new_iPhone = True
-        remove_bundle_file: str = os.path.join(
-            ".", "resources", "removes_ipcc", "Remove(default).ipcc"
+
+        remove_bundle_file = (
+            getAppDirectory() / "resources" / "removes_ipcc" / "Remove(default).ipcc"
         )
 
         # logger.info(f"URL: {url}")
@@ -388,6 +391,8 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
 
         # Sets up a temporary path for the selected .ipcc file to be downloaded to
         with TemporaryDirectory() as temp_dir:
+            temp_dir = Path(temp_dir).resolve()
+
             logger.debug(f"Temporary directory for the .ipcc: {temp_dir}")
             progress_label.config(
                 text=(
@@ -450,7 +455,7 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
             #     download_process.wait()
 
             # Extract the downloaded file path
-            downloaded_file_path = os.path.join(temp_dir, ipcc_file_name)
+            downloaded_file_path = temp_dir / ipcc_file_name
 
             # Update progress label
             progress_label.config(
@@ -568,12 +573,13 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
             #     window.update_idletasks()
 
             # This deletes the temp directory once done with it, over time, it can get a lot of temporary folders
-            for root, dirs, files in os.walk(temp_dir, topdown=False):
-                for file in files:
-                    os.remove(os.path.join(root, file))
-                for _dir in dirs:
-                    os.rmdir(os.path.join(root, _dir))
-            os.rmdir(temp_dir)
+            # for root, dirs, files in Path.walk(temp_dir, top_down=False):
+            #     for file in files:
+            #         os.remove(Path(root / file))
+            #     for _dir in dirs:
+            #         shutil.rmtree(Path(root / _dir))
+
+            shutil.rmtree(temp_dir)
 
         # Validate the injection by checking the logs
         if DataBase.get(["validate"], [True], "injection")[0] and not is_new_iPhone:
@@ -603,7 +609,7 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
                     )
                     log_text.see(tk.END)
                     sendData("injection", device=product_type, success=True)
-                    
+
                 else:
                     logger.error("SIM is not ready, injection failed.")
 
@@ -627,7 +633,7 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
                     )
                     log_text.see(tk.END)
                     sendData("injection", device=product_type, success=False)
-                    
+
             else:
                 logger.info("Could not validate the injection process")
                 log_text.tag_configure("grey", foreground="grey")
@@ -690,7 +696,7 @@ def injection(window: tk.Tk, log_text: tk.Text) -> None:
         selected_bundle (str): The selected bundle name.
         selected_container (str): The selected option name.
     """
-    
+
     asyncio.run_coroutine_threadsafe(removingAndInjectingIPCC(window, log_text), loop)
 
 
@@ -838,8 +844,12 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text) -> None:
         "USCellular",
     ]
     # Files to remove
-    remove_bundles_files: List[str] = [
-        os.path.join(".", "resources", "removes_ipcc", f"Remove({name}).ipcc")
+    # remove_bundles_files: List[str] = [
+    #     os.path.join(".", "resources", "removes_ipcc", f"Remove({name}).ipcc")
+    #     for name in removes
+    # ]
+    remove_bundles_files = [
+        getAppDirectory() / "resources" / "removes_ipcc" / f"Remove({name}).ipcc"
         for name in removes
     ]
 

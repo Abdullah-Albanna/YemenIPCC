@@ -4,7 +4,7 @@ import math
 
 from ..utils.images import Images
 
-from ..thread_managment.thread_terminator_var import terminate_splash_screen
+from ..thread_management.thread_terminator_var import terminate_splash_screen
 
 class SplashScreen(tk.Toplevel):
     def __init__(self):

@@ -1,5 +1,4 @@
 import subprocess
-import sys
 from tkinter import messagebox
 from contextlib import contextmanager
 
@@ -9,7 +8,6 @@ from .error_codes import ErrorCodes
 from ..database.dict_control import DictControl
 
 from .errors_stack import getStack
-from ..handles.exit_handle import handleExit
 
 logger = YemenIPCCLogger().logger
 
@@ -22,7 +20,6 @@ def managedProcess(*args, **kwargs):
     It runs the process, and once done, it ensures that the process is terminated
     to prevent it from running outside the program.
     """
-
     process = None
     try:
         process = subprocess.Popen(*args, **kwargs)
