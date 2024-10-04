@@ -3,11 +3,11 @@ from tkinter import messagebox
 from contextlib import contextmanager
 
 
-from .logger_config_class import YemenIPCCLogger
-from .error_codes import ErrorCodes
-from ..database.dict_control import DictControl
+from utils.logger_config_class import YemenIPCCLogger
+from utils.error_codes import ErrorCodes
+from database.dict_control import DictControl
 
-from .errors_stack import getStack
+from utils.errors_stack import getStack
 
 logger = YemenIPCCLogger().logger
 

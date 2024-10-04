@@ -2,7 +2,7 @@ import os
 from pydantic_settings import BaseSettings
 
 
-from ..utils.get_app_dir import getExecutablePath
+from utils.get_app_dir import getExecutablePath
 
 
 class Env(BaseSettings):

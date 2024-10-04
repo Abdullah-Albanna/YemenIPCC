@@ -2,8 +2,7 @@ import json
 from tinydb import JSONStorage, TinyDB, where
 
 
-
-from ..utils.get_app_dir import getExecutablePath
+from utils.get_app_dir import getExecutablePath
 
 
 class IndentedJSONStorage(JSONStorage):

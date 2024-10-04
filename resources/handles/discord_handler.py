@@ -4,9 +4,9 @@ import os
 import requests
 import re
 
-from ..database.dict_control import DictControl
-from ..database.db import DataBase
-from ..config.secrets import Env
+from database.dict_control import DictControl
+from database.db import DataBase
+from config.secrets import Env
 
 from loguru import logger
 

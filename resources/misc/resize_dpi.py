@@ -2,10 +2,11 @@ import tkinter as tk
 from functools import cache
 
 
-from ..utils.logger_config_class import YemenIPCCLogger
-from ..utils.get_system import system
+from utils.logger_config_class import YemenIPCCLogger
+from utils.get_system import system
 
 logger = YemenIPCCLogger().logger
+
 
 @cache
 def cachedDPIAndResolution() -> tuple[float, int, int]:

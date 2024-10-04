@@ -8,43 +8,46 @@ import webbrowser
 import os
 from tkinter import messagebox
 from PIL import ImageTk
-from .. import Button
+from resources import Button
 from time import sleep
 from typing import List
 
-from ..database.db import DataBase
-from ..utils.logger_config_class import YemenIPCCLogger
-from .api import API
-from ..utils.images import Images
-from ..utils.event_loop import NewEventLoop
+from database.db import DataBase
+from utils.logger_config_class import YemenIPCCLogger
+from core.api import API
+from utils.images import Images
+from utils.event_loop import NewEventLoop
 
-from .changing_option import changeWhichOne, changeBundle
-from ..checkers.check_for_update import checkForUpdateButton
-from ..device_management.injection import cleanRemove
-from ..device_management.repair import repairiPhone
-from ..handles.send_data import sendData
-from ..misc.temp_uuid import getUUID
-from ..handles.exit_handle import handleExit
-from ..arabic_tk.bidid import renderBiDiText
-from ..utils.set_font import getFont
-from ..misc.resize_dpi import DPIResize
-from ..device_management.injection import injection, disableIfRunning, injectFromFile
-from ..core.fixing_the_window import initialize
-from ..thread_management.thread_starter import startThread
-from ..checkers.check_for_update import checkForUpdate
-from ..checkers.check_for_internet import checkInternetConnection
-from ..device_management.device_manager import updateButtonStateThreaded, updateLabelStateThreaded, DeviceManager
-from ..utils.exit_unsupported_version import quitIfNotSupported
-from .login_signup_screen import main_
-from ..utils.splash_screen import splash
-from ..utils.errors_stack import getStack
-from ..utils.get_os_lang import isItArabic
-from ..utils.apple_drivers import AppleDrivers
+from core.changing_option import changeWhichOne, changeBundle
+from checkers.check_for_update import checkForUpdateButton
+from device_management.injection import cleanRemove
+from device_management.repair import repairiPhone
+from handles.send_data import sendData
+from misc.temp_uuid import getUUID
+from handles.exit_handle import handleExit
+from arabic_tk.bidid import renderBiDiText
+from utils.set_font import getFont
+from misc.resize_dpi import DPIResize
+from device_management.injection import injection, disableIfRunning, injectFromFile
+from core.fixing_the_window import initialize
+from thread_management.thread_starter import startThread
+from checkers.check_for_update import checkForUpdate
+from checkers.check_for_internet import checkInternetConnection
+from device_management.device_manager import (
+    updateButtonStateThreaded,
+    updateLabelStateThreaded,
+    DeviceManager,
+)
+from utils.exit_unsupported_version import quitIfNotSupported
+from core.login_signup_screen import showScreen
+from utils.splash_screen import splash
+from utils.errors_stack import getStack
+from utils.get_os_lang import isItArabic
+from utils.apple_drivers import AppleDrivers
 
-from ..utils.get_system import system
-from ..thread_management.thread_terminator_var import terminate
-from ..thread_management.thread_terminator_var import terminate_splash_screen
-from ..config.version import CURRENT_VERSION
+from utils.get_system import system
+from thread_management.thread_terminator_var import terminate, terminate_splash_screen
+from config.version import CURRENT_VERSION
 
 logger = YemenIPCCLogger().logger
 arabic = DataBase.get(["arabic"], [isItArabic()], "app")[0]
@@ -79,7 +82,6 @@ class LogText(tk.Text):
         # Use the global log_frame if master is not provide
         super().__init__(master, *args, **kwargs)
         try:
-
             scrollbar = LogScrollBar(self.yview)
             self.configure(
                 font=(getFont(), 12),
@@ -92,7 +94,9 @@ class LogText(tk.Text):
             self.pack(side=tk.LEFT, fill="both")
 
         except Exception as e:
-            logger.error(f"An error occurred while creating the log text, error: {e}, error stack: {getStack()}")
+            logger.error(
+                f"An error occurred while creating the log text, error: {e}, error stack: {getStack()}"
+            )
 
 
 class RadioButton(tk.Radiobutton):
@@ -101,16 +105,16 @@ class RadioButton(tk.Radiobutton):
     """
 
     def __init__(
-            self,
-            which_one_frame,
-            bundles_frame,
-            which_one: List[str],
-            bundles: List[str],
-            x: tk.IntVar,
-            y: tk.IntVar,
-            log_text,
-            *args,
-            **kwargs,
+        self,
+        which_one_frame,
+        bundles_frame,
+        which_one: List[str],
+        bundles: List[str],
+        x: tk.IntVar,
+        y: tk.IntVar,
+        log_text,
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.which_one_frame = which_one_frame
@@ -124,7 +128,6 @@ class RadioButton(tk.Radiobutton):
 
     def create_radios(self):
         try:
-
             for index in range(len(self.which_one)):
                 self.radio_which_one_buttom: tk.Radiobutton = tk.Radiobutton(
                     self.which_one_frame,
@@ -174,15 +177,15 @@ class RadioButton(tk.Radiobutton):
 
 class Frames(tk.Frame):
     def __init__(
-            self,
-            master,
-            bg=dark_color,
-            bd=3,
-            relief=tk.SUNKEN,
-            padx=20,
-            pady=20,
-            *args,
-            **kwargs,
+        self,
+        master,
+        bg=dark_color,
+        bd=3,
+        relief=tk.SUNKEN,
+        padx=20,
+        pady=20,
+        *args,
+        **kwargs,
     ):
         super().__init__(
             master, bg=bg, bd=bd, relief=relief, padx=padx, pady=pady, *args, **kwargs
@@ -194,17 +197,15 @@ class App(tk.Tk):
         super().__init__()
         self.current_version = CURRENT_VERSION
         self.UUID = getUUID()
-        
+
     async def start(self):
         self.withdraw()
 
         windowCreation(self)
-        
+
         tkthread.call(splash)
 
         await self.loginVerify()
-
-        asyncio.run_coroutine_threadsafe(self.checkDrivers(), loop)
 
         self.focus()
         self.bundles: List[str] = [
@@ -218,7 +219,6 @@ class App(tk.Tk):
         self.which_one: List[str] = ["default.bundle", "unknown.bundle"]
         self.xintvar = tk.IntVar()
         self.yintvar = tk.IntVar()
-
 
         self.connected_status: tk.Label = tk.Label(
             self,
@@ -283,6 +283,8 @@ class App(tk.Tk):
 
         initialize(self)
 
+        asyncio.run_coroutine_threadsafe(self.checkDrivers(), loop)
+
         self.protocol(
             "WM_DELETE_WINDOW",
             lambda: [
@@ -303,17 +305,24 @@ class App(tk.Tk):
             handleExit()
 
     async def loginVerify(self):
-        username: str = DataBase.get(["username"], [False], "account")[0]
+        result = DataBase.get(["username"], [False], "account")
+
+        if not result:
+            messagebox.showerror("Database Error", "Unable to retrieve the username from the database, please re run the app")
+            logger.error("Failed to retrieve username from database.")
+            handleExit(status_code=1)
+
+        username: str = result[0]
 
         if not username:
             terminate_splash_screen.set()
             sleep(1)
-            main_("SignupPage")
+            showScreen("SignupPage")
 
         if username and keyring.get_password("yemenipcc", username) is None:
             terminate_splash_screen.set()
             sleep(1)
-            main_("LoginPage")
+            showScreen("LoginPage")
 
         elif username:
             top = tk.Toplevel()
@@ -321,14 +330,18 @@ class App(tk.Tk):
             top.attributes("-topmost", 1)
 
             if not checkInternetConnection():
-                messagebox.showerror("No Internet", 
-                                     renderBiDiText("لايوجد اتصال بالانترنت") if arabic
-                                    else "Make sure to connect to the internet first", parent=top)
-            
+                messagebox.showerror(
+                    "No Internet",
+                    renderBiDiText("لايوجد اتصال بالانترنت")
+                    if arabic
+                    else "Make sure to connect to the internet first",
+                    parent=top,
+                )
+
                 terminate_splash_screen.set()
 
                 handleExit(status_code=1)
-            
+
             try:
                 response = await API().refreshToken(
                     keyring.get_password("yemenipcc", username), username
@@ -337,9 +350,10 @@ class App(tk.Tk):
                 if response == "please get a new token":
                     terminate_splash_screen.set()
                     sleep(1)
-                    main_("LoginPage")
+                    showScreen("LoginPage")
                 elif response == "success":
                     pass
+
                 else:
                     terminate_splash_screen.set()
                     sleep(1)
@@ -368,7 +382,6 @@ class App(tk.Tk):
                 handleExit(status_code=1)
 
     def runThreads(self):
-
         startThread(
             lambda: disableIfRunning(self.injection_button, self), "disableIfRunning"
         )
@@ -417,20 +430,32 @@ class App(tk.Tk):
         ).pack(side="top", fill="both")
 
     async def checkDrivers(self):
-        sleep(5) # wait for the app to run
-        apple = AppleDrivers(self)
+        await asyncio.sleep(1)
+
+        apple_drivers = AppleDrivers(self)
 
         if system == "Windows":
-            checking_result = apple.checkInstalledAppleDrivers()
-            
-            if checking_result:
-                if messagebox.askyesno("Drivers not Found", "Apple driver are not installed, should I install it?"):
-                    asyncio.run_coroutine_threadsafe(apple.installAppleDrivers(), loop)
-            
+            checking_result = apple_drivers.checkInstalledAppleDrivers()
+
+            if not checking_result:
+                if messagebox.askyesno(
+                    "Drivers not Found",
+                    "Apple driver are not installed, should I install it?",
+                ):
+                    apple_drivers_event = NewEventLoop()
+                    apple_drivers_loop = apple_drivers_event.getLoop()
+
+                    asyncio.run_coroutine_threadsafe(
+                        apple_drivers.installAppleDrivers(), apple_drivers_loop
+                    )
+
             elif checking_result == "error":
-                messagebox.showerror("Drivers Error", "couldn't check if necessary drivers are installed")
+                messagebox.showerror(
+                    "Drivers Error", "couldn't check if necessary drivers are installed"
+                )
 
                 handleExit(status_code=1)
+
 
 def windowCreation(window: tk.Tk) -> None:
     """
@@ -462,7 +487,9 @@ def windowCreation(window: tk.Tk) -> None:
 
         logger.debug("Made the window")
     except Exception:
-        logger.error(f"An error occurred while creating the window, error: {getStack()}")
+        logger.error(
+            f"An error occurred while creating the window, error: {getStack()}"
+        )
 
 
 class MenuBar(tk.Menu):
@@ -479,9 +506,8 @@ class MenuBar(tk.Menu):
         self.validate_var = tk.BooleanVar(value=validate_status)
         self.log_text = log_text
         self.current_version = current_version
-    
-    async def create(self):
 
+    async def create(self):
         # Create and add menus
         self.filemenu = self.addMenu(renderBiDiText("ملف") if arabic else "File")
         self.toolsmenu = self.addMenu(renderBiDiText("أدوات") if arabic else "Tools")
@@ -538,13 +564,17 @@ class MenuBar(tk.Menu):
         self.addCommand(
             self.toolsmenu,
             label=renderBiDiText("إعادة التشغيل") if arabic else "restart",
-            command=lambda: DeviceManager(log_text=self.log_text).systemActions("restart"),
+            command=lambda: DeviceManager(log_text=self.log_text).systemActions(
+                "restart"
+            ),
         )
 
         self.addCommand(
             self.toolsmenu,
             label=renderBiDiText("إيقاف التشغيل") if arabic else "shutdown",
-            command=lambda: DeviceManager(log_text=self.log_text).systemActions("shutdown"),
+            command=lambda: DeviceManager(log_text=self.log_text).systemActions(
+                "shutdown"
+            ),
         )
 
         self.toolsmenu.add_separator()
@@ -556,6 +586,25 @@ class MenuBar(tk.Menu):
             ),
             command=lambda: checkForUpdateButton(self.current_version),
         )
+
+        self.toolsmenu.add_separator()
+
+        if system == "Windows":
+            drivers_loop = NewEventLoop()
+            apple_drivers = AppleDrivers(self.master)
+
+            self.addCommand(
+                self.toolsmenu,
+                label=(
+                    renderBiDiText("اعاده تثبيت التعريفات")
+                    if arabic
+                    else "reinstall Apple drivers"
+                ),
+                command=lambda: asyncio.run_coroutine_threadsafe(
+                    apple_drivers.reinstallDrivers(), drivers_loop.getLoop()
+                ),
+            )
+
         self.addCommand(
             self.languagemenu,
             label=renderBiDiText("تبديل اللغه") if arabic else "switch languages",
@@ -565,7 +614,9 @@ class MenuBar(tk.Menu):
         self.addCommand(
             self.accountmenu,
             label=renderBiDiText("معلومات الحساب") if arabic else "account info",
-            command=lambda: asyncio.run_coroutine_threadsafe(self.showAccountInfo(), loop),
+            command=lambda: asyncio.run_coroutine_threadsafe(
+                self.showAccountInfo(), loop
+            ),
         )
 
         self.accountmenu.add_separator()
@@ -632,7 +683,12 @@ class MenuBar(tk.Menu):
         keyring.delete_password(
             "yemenipcc", DataBase.get(["username"], [False], "account")[0]
         )
-        messagebox.showinfo("logout", renderBiDiText("تم تسجيل الخروج بنجاح") if arabic else "successfully logged out")
+        messagebox.showinfo(
+            "logout",
+            renderBiDiText("تم تسجيل الخروج بنجاح")
+            if arabic
+            else "successfully logged out",
+        )
 
         self.restart()
 
@@ -661,19 +717,18 @@ class MenuBar(tk.Menu):
         messagebox.showinfo("user info", arabic_message if arabic else message)
 
     def onValidateToggle(self, validate_var):
-
         if validate_var:
             DataBase.add(["validate"], [True], "injection")
         else:
             if messagebox.askyesno(
-                    "Disable Validation",
-                    (
-                            renderBiDiText(
-                                "إيقاف التحقق سيجعل التطوير بطيئًا، يُوصى بتركه مفعلًا\n\n هل أنت متأكد أنك تريد تعطيله؟"
-                            )
-                            if arabic
-                            else "Turning off validating would make development slow, it is recommended to leave it on\n\n Are you sure you want to disable it?"
-                    ),
+                "Disable Validation",
+                (
+                    renderBiDiText(
+                        "إيقاف التحقق سيجعل التطوير بطيئًا، يُوصى بتركه مفعلًا\n\n هل أنت متأكد أنك تريد تعطيله؟"
+                    )
+                    if arabic
+                    else "Turning off validating would make development slow, it is recommended to leave it on\n\n Are you sure you want to disable it?"
+                ),
             ):
                 DataBase.add(["validate"], [False], "injection")
             else:
@@ -681,7 +736,6 @@ class MenuBar(tk.Menu):
                 DataBase.add(["validate"], [True], "injection")
 
     def switchLanguage(self):
-
         if arabic:
             DataBase.add(["arabic"], [False], "app")
             self.restart()

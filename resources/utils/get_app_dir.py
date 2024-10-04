@@ -12,12 +12,12 @@ def getAppDirectory() -> Path:
         # running in a bundle
         # bundle_dir = os.path.dirname(sys.executable)
         bundle_dir = Path(sys.executable).resolve().parent
-        
+
     else:
         # running in a normal Python environment
         # bundle_dir = os.path.dirname(os.path.abspath(__file__))
         bundle_dir = Path(__file__).resolve().parent
-        
+
     # keeps going back until the "resources" folder is in the listing of that dir
     while "resources" not in os.listdir(bundle_dir):
         bundle_dir = Path(bundle_dir).resolve().parent

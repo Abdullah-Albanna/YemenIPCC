@@ -2,9 +2,9 @@ import subprocess
 from functools import cache
 
 
-from .managed_process import managedProcess
+from utils.managed_process import managedProcess
 
-from .get_system import system
+from utils.get_system import system
 
 
 @cache

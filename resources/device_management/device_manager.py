@@ -4,21 +4,21 @@ from typing import Tuple, Dict, List
 from time import sleep
 
 
-from ..utils.logger_config_class import YemenIPCCLogger
-from ..utils.get_bin_path import BinaryPaths
-from ..database.dict_control import DictControl
-from ..database.db import DataBase
+from utils.logger_config_class import YemenIPCCLogger
+from utils.get_bin_path import BinaryPaths
+from database.dict_control import DictControl
+from database.db import DataBase
 
-from ..thread_management.thread_starter import startThread
-from ..utils.managed_process import managedProcess
-from ..misc.resize_dpi import DPIResize
-from ..arabic_tk.bidid import renderBiDiText
-from ..utils.set_font import getFont
-from ..utils.errors_stack import getStack
-from ..utils.get_os_lang import isItArabic
+from thread_management.thread_starter import startThread
+from utils.managed_process import managedProcess
+from misc.resize_dpi import DPIResize
+from arabic_tk.bidid import renderBiDiText
+from utils.set_font import getFont
+from utils.errors_stack import getStack
+from utils.get_os_lang import isItArabic
 
-from ..thread_management.thread_terminator_var import terminate
-from ..utils.get_system import system
+from thread_management.thread_terminator_var import terminate
+from utils.get_system import system
 
 
 arabic = DataBase.get(["arabic"], [isItArabic()], "app")[0]
@@ -41,7 +41,9 @@ class DeviceManager:
     A class to control the iPhone
     """
 
-    def __init__(self, window=None, frame=None, button=None, log_text=None, connected_status=None):
+    def __init__(
+        self, window=None, frame=None, button=None, log_text=None, connected_status=None
+    ):
         self.window: tk.Tk = window
         self.frame: tk.Frame = frame
         self.button: tk.Button = button
@@ -53,16 +55,16 @@ class DeviceManager:
         self.logged_product_type: str = ""
         self.logged_product_version: str = ""
         self.logged_errors = set()
-        
+
     def systemActions(self, action: str) -> None:
         """
         Controls the iPhone to restart or shutdown or even sleep
         """
-        
+
         with managedProcess([idevicediagnostics, action], **kwargs) as device_process:
             if device_process is None:
                 return
-            
+
             stdout = device_process.communicate()[0]
             stderr = device_process.communicate()[1]
             result = stderr + stdout
@@ -73,7 +75,9 @@ class DeviceManager:
             elif "No device found." in result:
                 logger.debug(result)
                 color = "yellow"
-                result = renderBiDiText("لم يتم العثور على جهاز متصل") if arabic else result
+                result = (
+                    renderBiDiText("لم يتم العثور على جهاز متصل") if arabic else result
+                )
             else:
                 color = "green"
                 logger.debug(result)
@@ -82,7 +86,7 @@ class DeviceManager:
             self.log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
             self.log_text.insert(tk.END, f"\n{result}\n", color)
             self.log_text.see(tk.END)
-        
+
     def validateDevice(self) -> bool:
         """
         Checks if the device is really paired
@@ -153,7 +157,6 @@ class DeviceManager:
 
             # This to make sure to show the iPhone information only once a plug
             if self.checkIfPlugged():
-
                 if self.logged_product_type != product_type:
                     if product_type != "":
                         if self.logged_product_type != product_type:
@@ -258,7 +261,7 @@ class DeviceManager:
         while True:
             if terminate.is_set():
                 break
-            
+
             plugged = self.checkIfPlugged()
             running = DataBase.get(["running"], [False], "injection")[0]
 
@@ -276,7 +279,6 @@ class DeviceManager:
         """
 
         while True:
-            
             plugged = self.checkIfPlugged()
 
             # if it is plugged and returns False on the validation, we need to trust the device
@@ -286,9 +288,7 @@ class DeviceManager:
                 self.log_text.insert(
                     tk.END,
                     (
-                        renderBiDiText(
-                            "\nفشل التحقق من الجهاز: رمز خطأ غير معالج -5\n"
-                        )
+                        renderBiDiText("\nفشل التحقق من الجهاز: رمز خطأ غير معالج -5\n")
                         if arabic
                         else "\nDevice validation failed: unhandled error code -5\n"
                     ),

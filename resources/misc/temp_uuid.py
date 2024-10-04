@@ -1,8 +1,7 @@
-from pathlib import Path
 import uuid
 
 
-from ..utils.get_app_dir import getAppDirectory
+from utils.get_app_dir import getAppDirectory
 
 uuid_path = getAppDirectory() / "UUID"
 
@@ -31,8 +30,8 @@ def createNewUUID() -> None:
     """
     Gets the new UUID and save it into the "UUID" file
     """
-    uuid_path.write_text(generateUniqueUID()) if not uuid_path.exists() else ''
-    
+    uuid_path.write_text(generateUniqueUID()) if not uuid_path.exists() else ""
+
     with open(uuid_path, "r+") as uuid:
         if not isUUID(uuid.read()):
             uuid.seek(0)

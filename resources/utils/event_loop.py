@@ -2,6 +2,7 @@ import asyncio
 import threading
 import time
 
+
 class NewEventLoop(threading.Thread):
     def __init__(self):
         super().__init__(target=self._start_loop)

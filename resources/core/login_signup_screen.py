@@ -7,19 +7,18 @@ from typing import Literal
 from time import sleep
 
 
-from .api import API
-from ..utils.user_credentials import UserCredentials
-from ..utils.gif_placer import AnimatedGIF
-from ..utils.logger_config_class import YemenIPCCLogger
-from ..database.db import DataBase
-from ..utils.images import Images
+from core.api import API
+from utils.user_credentials import UserCredentials
+from utils.gif_placer import AnimatedGIF
+from utils.logger_config_class import YemenIPCCLogger
+from database.db import DataBase
+from utils.images import Images
 
-# from ..thread_managment.thread_starter import startThread
-from ..handles.exit_handle import handleExit
-from ..arabic_tk.bidid import renderBiDiText
-from ..utils.errors_stack import getStack
-from ..utils.get_os_lang import isItArabic
-from ..utils.event_loop import NewEventLoop
+from handles.exit_handle import handleExit
+from arabic_tk.bidid import renderBiDiText
+from utils.errors_stack import getStack
+from utils.get_os_lang import isItArabic
+from utils.event_loop import NewEventLoop
 
 logger = YemenIPCCLogger().logger
 arabic = DataBase.get(["arabic"], [isItArabic()], "app")[0]
@@ -125,7 +124,7 @@ class LoginPage(tk.Frame):
             borderwidth=0,
             highlightthickness=0,
             # command=lambda: startThread(lambda: asyncio.run(self.onLogin()), "login", True),
-            command=lambda:  asyncio.run_coroutine_threadsafe(self.onLogin(), loop),
+            command=lambda: asyncio.run_coroutine_threadsafe(self.onLogin(), loop),
             relief="flat",
             bd=0,
         )
@@ -244,10 +243,9 @@ class LoginPage(tk.Frame):
         )
 
     async def onLogin(self):
-
-        if self.master.current_frame != "LoginPage": 
+        if self.master.current_frame != "LoginPage":
             return
-        if self.running: 
+        if self.running:
             return
 
         self.running = True
@@ -345,7 +343,9 @@ class LoginPage(tk.Frame):
                 )
 
         except Exception as e:
-            logger.error(f"An error occurred in the login, error: {e}, error stack: {getStack()}")
+            logger.error(
+                f"An error occurred in the login, error: {e}, error stack: {getStack()}"
+            )
             messagebox.showerror(
                 "server error",
                 (
@@ -607,10 +607,9 @@ class SignupPage(tk.Frame):
         )
 
     async def on_signup(self):
-
-        if self.master.current_frame != "SignupPage": 
+        if self.master.current_frame != "SignupPage":
             return
-        if self.running: 
+        if self.running:
             return
 
         # loading = AnimatedGIF(
@@ -620,7 +619,6 @@ class SignupPage(tk.Frame):
         loading = AnimatedGIF(self, Images.loading_gif, "#060A17", 350, 300)
         sleep(2)
         if self.valid_email and self.valid_password and self.valid_username:
-
             response = await API().createAccount(
                 self.signup_username_entry.get(),
                 self.signup_email_entry.get(),
@@ -757,9 +755,9 @@ class App(tk.Toplevel):
         self.focus()
         self.current_frame = None
         icon = ImageTk.PhotoImage(
-                Images.YemenIPCC_png,
-                master=self,
-            )
+            Images.YemenIPCC_png,
+            master=self,
+        )
 
         self.iconphoto(True, icon)
         self.protocol(
@@ -810,7 +808,7 @@ class App(tk.Toplevel):
         self.current_frame = page_name
 
 
-def main_(page_to_show: Literal["SignupPage", "LoginPage"]):
+def showScreen(page_to_show: Literal["SignupPage", "LoginPage"]):
     # startThread(lambda: App(page_to_show).mainloop(), "Login/Signup Screen", True)
     App(page_to_show).mainloop()
 

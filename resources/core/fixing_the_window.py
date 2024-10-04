@@ -2,10 +2,10 @@ import ctypes
 import tkinter as tk
 
 
-from ..utils.logger_config_class import YemenIPCCLogger
+from utils.logger_config_class import YemenIPCCLogger
 
-from ..thread_management.thread_terminator_var import terminate_splash_screen
-from ..utils.get_system import system
+from thread_management.thread_terminator_var import terminate_splash_screen
+from utils.get_system import system
 
 logger = YemenIPCCLogger().logger
 

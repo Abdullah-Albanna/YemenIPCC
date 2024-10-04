@@ -1,9 +1,3 @@
-from .. import (
-    new_iPhone_message,
-    new_iPhones,
-    arabic_new_iphone_message,
-)
-
 import shutil
 import subprocess
 import os
@@ -16,28 +10,38 @@ from tempfile import TemporaryDirectory
 from threading import Event
 from pathlib import Path
 from time import sleep
-from typing import List
 
+from utils.logger_config_class import YemenIPCCLogger
+from utils.get_bin_path import BinaryPaths
+from device_management.device_manager import DeviceManager
+from database.db import DataBase
+from core.api import API
+from utils.event_loop import NewEventLoop
 
-from ..utils.logger_config_class import YemenIPCCLogger
-from ..utils.get_bin_path import BinaryPaths
-from .device_manager import DeviceManager
-from ..database.db import DataBase
-from ..core.api import API
-from ..utils.event_loop import NewEventLoop
+from thread_management.thread_starter import startThread
+from checkers.check_for_internet import checkInternetConnection
+from handles.send_data import sendData
+from utils.managed_process import managedProcess
+from utils.set_font import getFont
+from arabic_tk.bidid import renderBiDiText
+from utils.errors_stack import getStack
+from utils.get_os_lang import isItArabic
+from utils.get_app_dir import getAppDirectory
 
-from ..thread_management.thread_starter import startThread
-from ..checkers.check_for_internet import checkInternetConnection
-from ..handles.send_data import sendData
-from ..utils.managed_process import managedProcess
-from ..utils.set_font import getFont
-from ..utils.fix_ssl import fixSSL
-from ..arabic_tk.bidid import renderBiDiText
-from ..utils.errors_stack import getStack
-from ..utils.get_os_lang import isItArabic
-from ..utils.get_app_dir import getAppDirectory
+from thread_management.thread_terminator_var import terminate
+from utils.app_messages import new_iPhone_message, arabic_new_iphone_message
 
-from ..thread_management.thread_terminator_var import terminate
+# A list of the iPhone version that requires a special treatment
+new_iPhones = [
+    "iPhone 12 Mini",
+    "iPhone 12",
+    "iPhone 12 Pro",
+    "iPhone 12 Pro Max",
+    "iPhone 13 Mini",
+    "iPhone 13",
+    "iPhone 13 Pro",
+    "iPhone 13 Pro Max",
+]
 
 arabic = DataBase.get(["arabic"], [isItArabic()], "app")[0]
 medium_color, light_color, text_color = DataBase.get(

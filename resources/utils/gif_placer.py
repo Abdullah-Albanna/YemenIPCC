@@ -2,6 +2,7 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from io import BytesIO
 
+
 class AnimatedGIF:
     def __init__(self, parent, gif: BytesIO, color, width=None, height=None, x=0, y=0):
         self.parent = parent

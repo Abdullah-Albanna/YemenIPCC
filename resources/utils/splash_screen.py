@@ -2,9 +2,10 @@ import tkinter as tk
 from PIL import Image, ImageTk, ImageDraw
 import math
 
-from ..utils.images import Images
+from utils.images import Images
 
-from ..thread_management.thread_terminator_var import terminate_splash_screen
+from thread_management.thread_terminator_var import terminate_splash_screen
+
 
 class SplashScreen(tk.Toplevel):
     def __init__(self):
@@ -70,7 +71,6 @@ class SplashScreen(tk.Toplevel):
         self.canvas.create_image(214, 119, image=self.photo, anchor="center")
 
     def interpolate_color(self, start_color, end_color, t):
-
         start_color = [int(start_color[i : i + 2], 16) for i in (1, 3, 5)]
         end_color = [int(end_color[i : i + 2], 16) for i in (1, 3, 5)]
 
@@ -84,7 +84,6 @@ class SplashScreen(tk.Toplevel):
         return 0.5 * (1 - math.cos(math.pi * t))
 
     def glow(self):
-
         t = (self.step % self.transition_steps) / self.transition_steps
         eased_t = self.ease_in_out(t)
 

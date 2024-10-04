@@ -1,5 +1,4 @@
 import keyring
-import sys
 import httpx
 from tkinter import messagebox
 from typing import Literal
@@ -10,15 +9,17 @@ import zlib
 import base64
 
 
-from ..utils.logger_config_class import YemenIPCCLogger
-from ..database.db import DataBase
-from ..config.secrets import Env
+from utils.logger_config_class import YemenIPCCLogger
+from database.db import DataBase
+from config.secrets import Env
 
-from ..utils.errors_stack import getStack
-from ..utils.get_os_lang import isItArabic
-from ..handles.exit_handle import handleExit
+from utils.errors_stack import getStack
+from utils.get_os_lang import isItArabic
+from handles.exit_handle import handleExit
+from arabic_tk.bidid import renderBiDiText
+from utils.fix_ssl import fixSSL
 
-from ..thread_management.thread_terminator_var import terminate_splash_screen
+from thread_management.thread_terminator_var import terminate_splash_screen
 
 logger = YemenIPCCLogger().logger
 arabic: bool = DataBase.get(["arabic"], [isItArabic()], "app")[0]
@@ -70,7 +71,6 @@ class API:
             async with httpx.AsyncClient(
                 timeout=timeout, transport=transport, follow_redirects=True
             ) as client:
-
                 response = await client.request(
                     method=method,
                     url=url,
@@ -91,6 +91,9 @@ class API:
                     content = None
 
                 return json_res, response.status_code, content
+        except httpx.ConnectError as ce:
+            fixSSL()
+            logger.warning(f"Connector error: {ce}, stack: {getStack()}")
 
         except httpx.TimeoutException as te:
             logger.warning(f"request timed out, error: {te}, stack: {getStack()}")
@@ -164,9 +167,11 @@ class API:
         url = f"{self.domain}/login"
 
         # response = requests.post(f"{self.domain}/login", headers=headers, data=payload)
-        
-        json_res, status, _ = await self.makeRequest("POST", url, headers=headers ,data=payload)
-        
+
+        json_res, status, _ = await self.makeRequest(
+            "POST", url, headers=headers, data=payload
+        )
+
         # json_response = response.json()
         # status = response.status_code
 
@@ -239,17 +244,49 @@ class API:
             json_response, status, _ = await self.makeRequest(
                 "POST", f"{self.domain}/refresh_token", data=payload
             )
+
             # qst = requests.post(f"https://{self.domain}/refresh_token", data=payload)
             # json_response = qst.json()
             # status = qst.status_code
 
-            if status != 201:
+            if status == 530:
+                logger.error(f"The api is frozen")
+                terminate_splash_screen.set()
+                sleep(1)
+                messagebox.showerror(
+                    "API Error",
+                    (
+                        renderBiDiText("خادم التطبيق معلق, يرجى المحاوله لاحقا")
+                        if arabic
+                        else "The server is frozen, please try again"
+                    ),
+                )
+                handleExit(status_code=1)
+
+            elif status == 500:
+                logger.error("An error occurred in the api")
+                terminate_splash_screen.set()
+                sleep(1)
+                messagebox.showerror(
+                    "error",
+                    (
+                        renderBiDiText(
+                            "ثم مشكله, قد يكون خادم التطبيق مغلق, يرجى المحاوله لاحقا"
+                        )
+                        if arabic
+                        else "something went down, maybe the server is shut, please try again later"
+                    ),
+                )
+                handleExit(status_code=1)
+
+            elif status != 201:
                 warning: str = json_response.get("detail")
                 logger.warning(
                     f"A warning occurred in login with a token, warning: {warning}"
                 )
 
                 return warning
+
             else:
                 keyring.set_password(
                     "yemenipcc", username, json_response.get("access_token")
@@ -265,10 +302,16 @@ class API:
             sleep(1)
             messagebox.showerror(
                 "error",
-                "something went down, maybe the server is shut, please try again later",
+                (
+                    renderBiDiText(
+                        "ثم مشكله, قد يكون خادم التطبيق مغلق, يرجى المحاوله لاحقا"
+                    )
+                    if arabic
+                    else "something went down, maybe the server is shut, please try again later"
+                ),
             )
             handleExit(status_code=1)
-            
+
     async def grabUserInfo(self) -> dict | Literal["user does not exists"]:
         payload = {
             "token": keyring.get_password(

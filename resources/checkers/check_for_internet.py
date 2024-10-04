@@ -1,7 +1,7 @@
 import socket
 
-from ..database.dict_control import DictControl
-from ..utils.logger_config_class import YemenIPCCLogger
+from database.dict_control import DictControl
+from utils.logger_config_class import YemenIPCCLogger
 
 logger = YemenIPCCLogger().logger
 

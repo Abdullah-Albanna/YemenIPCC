@@ -2,11 +2,11 @@ import requests
 import re
 
 
-from ..utils.logger_config_class import YemenIPCCLogger
-from ..database.dict_control import DictControl
-from ..config.secrets import Env
+from utils.logger_config_class import YemenIPCCLogger
+from database.dict_control import DictControl
+from config.secrets import Env
 
-from ..utils.errors_stack import getStack
+from utils.errors_stack import getStack
 
 logger = YemenIPCCLogger().logger
 

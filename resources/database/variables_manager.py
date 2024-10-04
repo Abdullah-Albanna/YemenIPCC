@@ -1,14 +1,14 @@
-
 import os
 from tempfile import gettempdir
 
 
-from ..utils.logger_config_class import YemenIPCCLogger
+from utils.logger_config_class import YemenIPCCLogger
 
 from typing import Any
-from ..utils.get_system import system
+from utils.get_system import system
 
 logger = YemenIPCCLogger().logger
+
 
 @DeprecationWarning
 class VariableManager:
@@ -28,7 +28,6 @@ class VariableManager:
             tempdir, "yemenipcc", "yemenipcc_temp_variables.txt"
         ),
     ):
-        
         self.filename = filename
         self.variables = self.loadTempVariables()
 

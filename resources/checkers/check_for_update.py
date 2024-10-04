@@ -3,16 +3,16 @@ import webbrowser
 import re
 from tkinter import messagebox
 
-from ..database.db import DataBase
-from ..config.secrets import Env
-from ..utils.logger_config_class import YemenIPCCLogger
+from database.db import DataBase
+from config.secrets import Env
+from utils.logger_config_class import YemenIPCCLogger
 
-from .check_for_internet import checkInternetConnection
-from ..arabic_tk.bidid import renderBiDiText
-from ..utils.errors_stack import getStack
-from ..utils.get_os_lang import isItArabic
+from checkers.check_for_internet import checkInternetConnection
+from arabic_tk.bidid import renderBiDiText
+from utils.errors_stack import getStack
+from utils.get_os_lang import isItArabic
 
-from ..utils.get_system import system
+from utils.get_system import system
 
 arabic = DataBase.get(["arabic"], [isItArabic()], "app")[0]
 logger = YemenIPCCLogger().logger
@@ -45,7 +45,9 @@ def checkForUpdate(current_version: str, max_lines: int = 30) -> bool | str:
             )
             return "rate limit"
         else:
-            logger.error(f"Error fetching update information, error stack: {getStack()}")
+            logger.error(
+                f"Error fetching update information, error stack: {getStack()}"
+            )
         return False
 
     releases_info = response.json()
@@ -69,8 +71,8 @@ def checkForUpdate(current_version: str, max_lines: int = 30) -> bool | str:
                 # Crop the message if it exceeds max_length lines
                 if lines > max_lines:
                     message = (
-                            "\n".join(message.splitlines()[:max_lines])
-                            + "... Click Yes to Read the Rest"
+                        "\n".join(message.splitlines()[:max_lines])
+                        + "... Click Yes to Read the Rest"
                     )
 
                 size_mb = round(size / (1024 * 1024), 2)
@@ -88,8 +90,8 @@ def checkForUpdate(current_version: str, max_lines: int = 30) -> bool | str:
                 )
 
                 if not messagebox.askyesno(
-                        "Update Available",
-                        arabic_update_message if arabic else update_message,
+                    "Update Available",
+                    arabic_update_message if arabic else update_message,
                 ):
                     logger.info("User declined the update")
                     return False

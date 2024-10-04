@@ -2,9 +2,9 @@ from threading import Thread
 import ctypes
 
 
-from ..utils.logger_config_class import YemenIPCCLogger
+from utils.logger_config_class import YemenIPCCLogger
 
-from ..utils.errors_stack import getStack
+from utils.errors_stack import getStack
 
 logger = YemenIPCCLogger().logger
 thread_registry: list = []

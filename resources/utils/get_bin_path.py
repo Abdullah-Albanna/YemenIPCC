@@ -3,8 +3,8 @@ import subprocess
 from typing import Dict
 
 
-from .get_app_dir import getAppDirectory
-from .get_system import system
+from utils.get_app_dir import getAppDirectory
+from utils.get_system import system
 
 
 class BinaryPaths:
@@ -27,26 +27,24 @@ class BinaryPaths:
         # What these three do is specifing the executeable binary for each system so the user do not have to install anything
         if system == "Mac":
             # bin_base_dir = os.path.join(self.base_dir, "mac_binary")
-            bin_base_dir =self.base_dir / "mac_binary"
+            bin_base_dir = self.base_dir / "mac_binary"
             lib_path_env = "DYLD_LIBRARY_PATH"
 
         elif system == "Linux":
             # bin_base_dir = os.path.join(self.base_dir, "linux_binary")
             bin_base_dir = self.base_dir / "linux_binary"
             lib_path_env = "LD_LIBRARY_PATH"
-            
+
         elif system == "Windows":
             # bin_base_dir = os.path.join(self.base_dir, "windows_binary")
             bin_base_dir = self.base_dir / "windows_binary"
 
         if system in ["Mac", "Linux"]:
-            os.environ[lib_path_env] = (
-                f'{bin_base_dir / "lib"}:${lib_path_env}'
-            )
+            os.environ[lib_path_env] = f'{bin_base_dir / "lib"}:${lib_path_env}'
             self.env = os.environ.copy()
 
         self.setupBinaryPaths(bin_base_dir)
-        
+
         self.setupSubprocessOptions()
 
     def setupBinaryPaths(self, bin_base_dir):
@@ -64,7 +62,7 @@ class BinaryPaths:
         self.ideviceinstaller = bin_base_dir / f"ideviceinstaller{file_extension}"
 
         self.idevicepair = bin_base_dir / f"idevicepair{file_extension}"
-        
+
         self.idevicesyslog = bin_base_dir / f"idevicesyslog{file_extension}"
 
         # if system == "Mac":
@@ -140,6 +138,7 @@ class BinaryPaths:
         #         "text": True,
         #         "env": self.env,
         #     }
+
     def setupSubprocessOptions(self):
         self.kwargs = {
             "stdout": subprocess.PIPE,
@@ -147,15 +146,15 @@ class BinaryPaths:
             "text": True,
             "env": self.env,
         }
-        
+
         if system == "Windows":
-            self.kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW # type: ignore
+            self.kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW  # type: ignore
 
     def getPaths(self) -> Dict[str, dict | str]:
         """
         Returns the executable binary paths, required subprocess kwargs, the env for the binary to look for the library
         """
-        
+
         return {
             "ideviceinfo": self.ideviceinfo,
             "ideviceinstaller": self.ideviceinstaller,

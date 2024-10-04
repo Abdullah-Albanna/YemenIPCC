@@ -3,12 +3,12 @@ import os
 from time import sleep
 
 
-from ..database.db import DataBase
-from ..thread_management.thread_starter import killThreads
-from ..thread_management.thread_terminator_var import terminate
+from database.db import DataBase
+from thread_management.thread_starter import killThreads
+from thread_management.thread_terminator_var import terminate
 
 
-def handleExit(signum=None, frame=None, status_code = 0):
+def handleExit(status_code=0, signum=None, frame=None):
     """
     An extra step to close the app better
     """

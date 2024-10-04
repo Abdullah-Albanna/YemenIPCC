@@ -1,20 +1,20 @@
 import tkinter as tk
 from typing import List
 
-from ..database.db import DataBase
-from ..utils.logger_config_class import YemenIPCCLogger
-from ..utils.get_os_lang import isItArabic
+from database.db import DataBase
+from utils.logger_config_class import YemenIPCCLogger
+from utils.get_os_lang import isItArabic
 
-from ..arabic_tk.bidid import renderBiDiText
+from arabic_tk.bidid import renderBiDiText
 
 arabic = DataBase.get(["arabic"], [isItArabic()], "app")[0]
 logger = YemenIPCCLogger().logger
 
 
 def changeBundle(
-        log_text: tk.Text | None = None,
-        bundles: List[str] | None = None,
-        x: tk.IntVar | None = None,
+    log_text: tk.Text | None = None,
+    bundles: List[str] | None = None,
+    x: tk.IntVar | None = None,
 ) -> str:
     """
     Update the selected bundle based on the user's choice and display a message in the log text.
@@ -49,9 +49,9 @@ def changeBundle(
 
 
 def changeWhichOne(
-        log_text: tk.Text | None = None,
-        which_one: List[str] | None = None,
-        y: tk.IntVar | None = None,
+    log_text: tk.Text | None = None,
+    which_one: List[str] | None = None,
+    y: tk.IntVar | None = None,
 ) -> str:
     """
     Update the selected 'which one' option based on the user's choice and display a message in the log text.

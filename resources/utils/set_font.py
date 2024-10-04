@@ -1,9 +1,8 @@
-
-
-from .get_system import system
-from .byte_objects import almarai_font
+from utils.get_system import system
+from utils.byte_objects import almarai_font
 
 win_font_name = None
+
 
 def setWindowsFont():
     global win_font_name
@@ -17,11 +16,21 @@ def setWindowsFont():
 
     gdi32 = ctypes.WinDLL("gdi32")
     AddFontMemResourceEx = gdi32.AddFontMemResourceEx
-    AddFontMemResourceEx.argtypes = [wintypes.LPCVOID, wintypes.DWORD, wintypes.LPVOID, ctypes.POINTER(wintypes.DWORD)]
+    AddFontMemResourceEx.argtypes = [
+        wintypes.LPCVOID,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
     AddFontMemResourceEx.restype = wintypes.DWORD
 
     num_fonts = wintypes.DWORD(0)
-    if AddFontMemResourceEx(font_buffer, len(font_bytes), None, ctypes.byref(num_fonts)) != 0:
+    if (
+        AddFontMemResourceEx(
+            font_buffer, len(font_bytes), None, ctypes.byref(num_fonts)
+        )
+        != 0
+    ):
         win_font_name = "Almarai"
 
     # ctypes.windll.gdi32.AddFontResourceW(rf"{font_path}")

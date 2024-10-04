@@ -1,5 +1,4 @@
 from loguru import logger
-import os
 import subprocess
 import sys
 import argparse
@@ -8,13 +7,13 @@ from pathlib import Path
 from tempfile import gettempdir
 
 
-from ..handles.discord_handler import DiscordHandler
-from ..database.dict_control import DictControl
+from handles.discord_handler import DiscordHandler
+from database.dict_control import DictControl
 
-from .get_app_dir import getExecutablePath
+from utils.get_app_dir import getExecutablePath
 
-from .get_system import system
-from ..config.version import CURRENT_VERSION
+from utils.get_system import system
+from config.version import CURRENT_VERSION
 
 if system == "Windows":
     from colorama import init  # type: ignore
@@ -209,10 +208,9 @@ class YemenIPCCLogger:
         )
 
         if file_logging:
-    
             if not self.logs_path.exists():
                 self.logs_path.touch
-                
+
             self.logger.add(
                 self.logs_path,
                 mode="w",
@@ -231,13 +229,12 @@ class YemenIPCCLogger:
         """
         Sets up the app arguments
         """
-        
+
         parser = argparse.ArgumentParser(
             description="Yemen IPCC - An application to inject the network configuration files (.ipcc) to the iPhone devices",
             usage="%(prog)s [options]",
         )
-        
-        
+
         parser.add_argument(
             "-d", "--debug", action="store_true", help="Enable debug mode"
         )

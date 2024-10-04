@@ -1,10 +1,10 @@
 import sys
 
 
-from ..utils.get_system import system
+from utils.get_system import system
 
 if system == "Windows":
-    import win32console # type: ignore
+    import win32console  # type: ignore
 
 
 def allocateConsole() -> None:

@@ -4,7 +4,6 @@ import signal
 import asyncio
 from pathlib import Path
 
-from resources.config.version import CURRENT_VERSION
 from resources.core.main_window import App
 from resources.database.db import DataBase
 from resources.handles.exit_handle import handleExit
@@ -82,10 +81,6 @@ async def main():
     ):
         os.chdir(app_directory)
         logger.debug(f"Switched directory to {app_directory}")
-
-    # Writes the app version in a __version__ file
-    # with open(os.path.join(".", "__version__"), "w") as file:
-        # file.write(CURRENT_VERSION)
 
     setExecutePermission()
 

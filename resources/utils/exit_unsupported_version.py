@@ -3,15 +3,15 @@ import webbrowser
 from time import sleep
 
 
-from ..database.db import DataBase
-from ..config.secrets import Env
+from database.db import DataBase
+from config.secrets import Env
 
-from ..checkers.check_for_internet import checkInternetConnection
-from ..checkers.check_version_validation import getVersionValidation
-from ..handles.send_data import sendData
-from ..utils.get_os_lang import isItArabic
+from checkers.check_for_internet import checkInternetConnection
+from checkers.check_version_validation import getVersionValidation
+from handles.send_data import sendData
+from utils.get_os_lang import isItArabic
 
-from ..thread_management.thread_terminator_var import terminate
+from thread_management.thread_terminator_var import terminate
 
 arabic = DataBase.get(["arabic"], [isItArabic()], "app")[0]
 
@@ -29,10 +29,9 @@ def quitIfNotSupported(window, current_version, UUID) -> None:
             sleep(2)
 
             validation_status = getVersionValidation(current_version)
-            
+
             if validation_status is True:
                 break
-            
 
             if validation_status is False:
                 if not messagebox.askokcancel(

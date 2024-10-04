@@ -2,9 +2,9 @@ import os
 from loguru import logger
 from pathlib import Path
 
-from ..utils.get_app_dir import getAppDirectory
+from utils.get_app_dir import getAppDirectory
 
-from .get_system import system
+from utils.get_system import system
 
 
 def setPermission(directory, permission) -> None:
@@ -25,9 +25,10 @@ def setPermission(directory, permission) -> None:
 
 
 def setExecutePermission():
-    
     # It just automates the process, to make it easier for noobs
-    paths = (getAppDirectory() / "resources" / "bin").glob("*_binary")  # This just takes the binary folders
+    paths = (getAppDirectory() / "resources" / "bin").glob(
+        "*_binary"
+    )  # This just takes the binary folders
 
     # matching_folders = glob.glob(pattern)  # And this applies the wildcard
 
@@ -39,6 +40,6 @@ def setExecutePermission():
                 continue
             elif "linux_binary" in path.parts and system != "Linux":  # Same
                 continue
-            
+
             # Sets the permission
             setPermission(path, 0o755)
