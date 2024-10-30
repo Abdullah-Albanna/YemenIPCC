@@ -1,8 +1,8 @@
 import platform
-from typing import Literal
+from typing import Literal, Union
 
 bsystem = platform.system()
-system: Literal["Mac", "Windows", "Linux"] = ""
+system: Union[Literal["Mac", "Windows", "Linux"], str] = ""
 
 # Used to change the "Darwin" to "Mac" because it is known better with Mac not Darwin
 if bsystem == "Darwin":

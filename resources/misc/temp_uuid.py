@@ -32,11 +32,11 @@ def createNewUUID() -> None:
     """
     uuid_path.write_text(generateUniqueUID()) if not uuid_path.exists() else ""
 
-    with open(uuid_path, "r+") as uuid:
-        if not isUUID(uuid.read()):
-            uuid.seek(0)
-            uuid.truncate()
-            uuid.write(generateUniqueUID())
+    with open(uuid_path, "r+") as uuid_file:
+        if not isUUID(uuid_file.read()):
+            uuid_file.seek(0)
+            uuid_file.truncate()
+            uuid_file.write(generateUniqueUID())
 
 
 def getUUID() -> str:

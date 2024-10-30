@@ -11,7 +11,6 @@ from pathlib import Path
 import shutil
 import tkinter as tk
 from tkinter.ttk import Progressbar, Style
-from tkinter import messagebox
 import asyncio
 
 import time
@@ -19,6 +18,7 @@ import time
 from utils.error_codes import ErrorCodes
 from database.db import DataBase
 from utils.logger_config_class import YemenIPCCLogger
+from utils.messageboxes import MessageBox
 
 from utils.managed_process import managedProcess
 from utils.is_admin import isAdmin
@@ -85,7 +85,8 @@ class AppleDrivers:
 
         # self.schedular = sched.scheduler(time.time, time.sleep)
 
-    def checkInstalledAppleDrivers(self) -> bool | Literal["maybe", "error"]:
+    @staticmethod
+    def checkInstalledAppleDrivers() -> bool | Literal["maybe", "error"]:
         apple_drivers = 0
 
         with managedProcess(
@@ -94,15 +95,15 @@ class AppleDrivers:
             stderr=subprocess.PIPE,
             universal_newlines=True,
         ) as proc:
-            stdout = proc.communicate()[0]
-            stderr = proc.communicate()[1]
+            stdout = proc.stdout
+            stderr = proc.stderr
 
         if stderr:
             logger.error(
                 f"Couldn't parse for installed drivers, error: {stderr}, stack: {getStack()}"
             )
 
-            return
+            return "error"
 
         # Splits the drivers from the stdout to a list with two new lines
         drivers = stdout.split("\n\n")
@@ -133,7 +134,8 @@ class AppleDrivers:
         else:
             return True
 
-    def getTemp(self):
+    @staticmethod
+    def getTemp():
         temp = tempfile.gettempdir()
 
         # We store every thing inside of this directoy
@@ -145,7 +147,7 @@ class AppleDrivers:
     async def installAppleDrivers(self):
         # Some drivers won't install unless you are running installing it as an administrator
         if not isAdmin():
-            messagebox.showerror(
+            MessageBox().showerror(
                 "Permission Error",
                 "(error code: {})\n\n Permission denied, please re-run  the app as an administrator".format(
                     ErrorCodes.PERMISSION_DENIED.value
@@ -174,7 +176,7 @@ class AppleDrivers:
 
         self._installExtractedDrivers()
 
-        if messagebox.askyesno("Clean up", "Would you like to clean up downloaded drivers?"):
+        if MessageBox().askyesno("Clean up", "Would you like to clean up downloaded drivers?"):
             self._cleanupDrivers()
 
         self.progress_bar.stop()
@@ -184,7 +186,7 @@ class AppleDrivers:
 
     async def reinstallDrivers(self):
         if not isAdmin():
-            messagebox.showerror(
+            MessageBox().showerror(
                 "Permission Error",
                 "(error code: {})\n\n Permission denied, please re-run  the app as an administrator".format(
                     ErrorCodes.PERMISSION_DENIED.value
@@ -201,7 +203,7 @@ class AppleDrivers:
                 stderr=subprocess.PIPE,
                 stdout=subprocess.DEVNULL,
             ) as proc:
-                stderr = proc.communicate()[1]
+                stderr = proc.stderr
 
                 if stderr:
                     logger.warning(
@@ -234,7 +236,7 @@ class AppleDrivers:
                 stderr=subprocess.PIPE,
                 stdout=subprocess.DEVNULL,
             ) as proc:
-                stderr = proc.communicate()[1]
+                stderr = proc.stderr
 
                 if stderr:
                     logger.error(
@@ -254,7 +256,7 @@ class AppleDrivers:
                     stderr=subprocess.PIPE,
                     stdout=subprocess.DEVNULL,
                 ) as proc:
-                    stderr = proc.communicate()[1]
+                    stderr = proc.stderr
                     if stderr:
                         logger.error(
                             f"Error installing {inf}: {stderr}, stack: {getStack()}"
@@ -270,7 +272,7 @@ class AppleDrivers:
                 stderr=subprocess.PIPE,
                 stdout=subprocess.DEVNULL,
             ) as proc:
-                stderr = proc.communicate()[1]
+                stderr = proc.stderr
                 if stderr:
                     logger.error(
                         f"Error installing {inf}: {stderr}, stack: {getStack()}"
@@ -287,7 +289,7 @@ class AppleDrivers:
                     stderr=subprocess.PIPE,
                     stdout=subprocess.DEVNULL,
                 ) as proc:
-                    stderr = proc.communicate()[1]
+                    stderr = proc.stderr
 
                     if stderr:
                         logger.error(
@@ -305,7 +307,7 @@ class AppleDrivers:
             with managedProcess(
                 command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL
             ) as proc:
-                stderr = proc.communicate()[1]
+                stderr = proc.stderr
 
                 if stderr:
                     logger.error(
@@ -434,7 +436,7 @@ class AppleDrivers:
                     if attempt == retries - 1:
                         self.progress_bar.destroy()
                         self.label.destroy()
-                        messagebox.showerror(
+                        MessageBox().showerror(
                             "Download Error",
                             "(error code: {}) \n\n couldn't download drivers, please retry".format(
                                 ErrorCodes.TIMEOUT.value

@@ -36,7 +36,7 @@ def setExecutePermission():
         if "windows_binary" not in path.parts:  # not necessary for windows
             if (
                 "mac_binary" in path.parts and system != "Darwin"
-            ):  #  If it detects the mac binary and it is not a mac machine, skip
+            ):  # If it detects the mac binary and it is not a mac machine, skip
                 continue
             elif "linux_binary" in path.parts and system != "Linux":  # Same
                 continue

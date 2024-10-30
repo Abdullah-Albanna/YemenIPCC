@@ -6,7 +6,6 @@ import keyring
 import tkthread
 import webbrowser
 import os
-from tkinter import messagebox
 from PIL import ImageTk
 from resources import Button
 from time import sleep
@@ -17,6 +16,8 @@ from utils.logger_config_class import YemenIPCCLogger
 from core.api import API
 from utils.images import Images
 from utils.event_loop import NewEventLoop
+from utils.messageboxes import MessageBox
+from core.idevice import iDevice
 
 from core.changing_option import changeWhichOne, changeBundle
 from checkers.check_for_update import checkForUpdateButton
@@ -36,7 +37,6 @@ from checkers.check_for_internet import checkInternetConnection
 from device_management.device_manager import (
     updateButtonStateThreaded,
     updateLabelStateThreaded,
-    DeviceManager,
 )
 from utils.exit_unsupported_version import quitIfNotSupported
 from core.login_signup_screen import showScreen
@@ -129,7 +129,7 @@ class RadioButton(tk.Radiobutton):
     def create_radios(self):
         try:
             for index in range(len(self.which_one)):
-                self.radio_which_one_buttom: tk.Radiobutton = tk.Radiobutton(
+                radio_which_one_buttom: tk.Radiobutton = tk.Radiobutton(
                     self.which_one_frame,
                     text=self.which_one[index],
                     variable=self.y,
@@ -147,11 +147,11 @@ class RadioButton(tk.Radiobutton):
                     ),
                     width=10,
                 )
-                self.radio_which_one_buttom.pack(anchor=tk.NE, fill="both")
+                radio_which_one_buttom.pack(anchor=tk.NE, fill="both")
 
             # Create radio buttons for bundles
             for index in range(len(self.bundles)):
-                self.radio_button: tk.Radiobutton = tk.Radiobutton(
+                radio_button: tk.Radiobutton = tk.Radiobutton(
                     self.bundles_frame,
                     text=self.bundles[index],
                     variable=self.x,
@@ -167,7 +167,7 @@ class RadioButton(tk.Radiobutton):
                     command=lambda: changeBundle(self.log_text, self.bundles, self.x),
                     width=10,
                 )
-                self.radio_button.pack(anchor=tk.NW, fill="both", expand=True)
+                radio_button.pack(anchor=tk.NW, fill="both", expand=True)
 
         except Exception as e:
             logger.error(
@@ -304,11 +304,15 @@ class App(tk.Tk):
             self.destroy()
             handleExit()
 
-    async def loginVerify(self):
+    @staticmethod
+    async def loginVerify():
         result = DataBase.get(["username"], [False], "account")
 
         if not result:
-            messagebox.showerror("Database Error", "Unable to retrieve the username from the database, please re run the app")
+            MessageBox().showerror(
+                "Database Error",
+                "Unable to retrieve the username from the database, please re run the app",
+            )
             logger.error("Failed to retrieve username from database.")
             handleExit(status_code=1)
 
@@ -325,20 +329,17 @@ class App(tk.Tk):
             showScreen("LoginPage")
 
         elif username:
-            top = tk.Toplevel()
-            top.withdraw()
-            top.attributes("-topmost", 1)
 
             if not checkInternetConnection():
-                messagebox.showerror(
+
+                terminate_splash_screen.set()
+
+                MessageBox().showerror(
                     "No Internet",
                     renderBiDiText("لايوجد اتصال بالانترنت")
                     if arabic
                     else "Make sure to connect to the internet first",
-                    parent=top,
                 )
-
-                terminate_splash_screen.set()
 
                 handleExit(status_code=1)
 
@@ -357,7 +358,7 @@ class App(tk.Tk):
                 else:
                     terminate_splash_screen.set()
                     sleep(1)
-                    messagebox.showerror(
+                    MessageBox().showerror(
                         "error",
                         (
                             renderBiDiText("ثم مشكله في الحساب")
@@ -369,9 +370,9 @@ class App(tk.Tk):
 
             except Exception as e:
                 terminate_splash_screen.set()
-                logger.error(f"somethin went wrong, error: {e}, stack: {getStack()}")
+                logger.error(f"something went wrong, error: {e}, stack: {getStack()}")
                 sleep(1)
-                messagebox.showerror(
+                MessageBox().showerror(
                     "error",
                     (
                         renderBiDiText("حصلت مشكله، حاول لاحقا")
@@ -417,7 +418,8 @@ class App(tk.Tk):
                 break
             sleep(2)
 
-    def containerTypeLabel(self, which_one_frame):
+    @staticmethod
+    def containerTypeLabel(which_one_frame):
         """
         Creates a label to indicate the type of .ipcc
         """
@@ -438,7 +440,7 @@ class App(tk.Tk):
             checking_result = apple_drivers.checkInstalledAppleDrivers()
 
             if not checking_result:
-                if messagebox.askyesno(
+                if MessageBox().askyesno(
                     "Drivers not Found",
                     "Apple driver are not installed, should I install it?",
                 ):
@@ -450,7 +452,7 @@ class App(tk.Tk):
                     )
 
             elif checking_result == "error":
-                messagebox.showerror(
+                MessageBox().showerror(
                     "Drivers Error", "couldn't check if necessary drivers are installed"
                 )
 
@@ -497,7 +499,7 @@ class MenuBar(tk.Menu):
     Creates and configures the menu bar.
     """
 
-    def __init__(self, master, log_text, current_version, *args, **kwargs):
+    def __init__(self, master: tk.Tk, log_text, current_version, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.master = master
         self.current_version = current_version
@@ -564,17 +566,13 @@ class MenuBar(tk.Menu):
         self.addCommand(
             self.toolsmenu,
             label=renderBiDiText("إعادة التشغيل") if arabic else "restart",
-            command=lambda: DeviceManager(log_text=self.log_text).systemActions(
-                "restart"
-            ),
+            command=lambda: iDevice.systemActions("restart"),
         )
 
         self.addCommand(
             self.toolsmenu,
             label=renderBiDiText("إيقاف التشغيل") if arabic else "shutdown",
-            command=lambda: DeviceManager(log_text=self.log_text).systemActions(
-                "shutdown"
-            ),
+            command=lambda: iDevice.systemActions("shutdown"),
         )
 
         self.toolsmenu.add_separator()
@@ -653,13 +651,14 @@ class MenuBar(tk.Menu):
             self.addCommand(
                 self.helpmenu,
                 label=renderBiDiText("حول") if arabic else "about",
-                command=lambda: messagebox.showinfo(
+                command=lambda: MessageBox().showinfo(
                     "حول" if arabic else "About",
                     arabic_help if arabic else english_help,
                 ),
             )
 
-    def addCommand(self, menu: tk.Menu, label, command):
+    @staticmethod
+    def addCommand(menu: tk.Menu, label, command):
         menu.add_command(
             label=label,
             font=(getFont(), 14 if system == "Mac" or system == "Linux" else 10),
@@ -683,7 +682,7 @@ class MenuBar(tk.Menu):
         keyring.delete_password(
             "yemenipcc", DataBase.get(["username"], [False], "account")[0]
         )
-        messagebox.showinfo(
+        MessageBox().showinfo(
             "logout",
             renderBiDiText("تم تسجيل الخروج بنجاح")
             if arabic
@@ -692,13 +691,14 @@ class MenuBar(tk.Menu):
 
         self.restart()
 
-    async def showAccountInfo(self):
+    @staticmethod
+    async def showAccountInfo():
         user = await API().grabUserInfo()
         message = textwrap.dedent(
             f"""\
     username: {user.get("username")}
     premium: {"no" if not user.get("premium") else "yes"}
-    downloads left: {user.get("download_left")}
+    downloads left: {user.get("download_left") if not user.get("premium") else "∞"}
     created at: {user.get("created_at")}
 """
         ).replace("T", " ")
@@ -708,19 +708,20 @@ class MenuBar(tk.Menu):
                 f"""
     اسم المستخدم: {user.get("username")}
     مميز: {"لا" if not user.get("premium") else "نعم"}
-    التنزيلات المتبقية: {user.get("download_left")}
+    التنزيلات المتبقية: {user.get("download_left") if not user.get("premium") else "∞"}
     تم الإنشاء في: {user.get("created_at")}
     """
             )
         ).replace("T", " ")
 
-        messagebox.showinfo("user info", arabic_message if arabic else message)
+        MessageBox().showinfo("user info", arabic_message if arabic else message)
 
-    def onValidateToggle(self, validate_var):
+    @staticmethod
+    def onValidateToggle(validate_var):
         if validate_var:
             DataBase.add(["validate"], [True], "injection")
         else:
-            if messagebox.askyesno(
+            if MessageBox().askyesno(
                 "Disable Validation",
                 (
                     renderBiDiText(

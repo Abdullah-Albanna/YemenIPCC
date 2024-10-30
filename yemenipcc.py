@@ -4,20 +4,23 @@ import signal
 import asyncio
 from pathlib import Path
 
+
 from resources.core.main_window import App
 from resources.database.db import DataBase
+from resources.utils.logger_config_class import YemenIPCCLogger
+
 from resources.handles.exit_handle import handleExit
 from resources.misc.temp_uuid import createNewUUID
 from resources.misc.win_console_allocation import winLogsInit
 from resources.utils.get_app_dir import getAppDirectory
-from resources.utils.get_system import system
-from resources.utils.logger_config_class import YemenIPCCLogger
 from resources.utils.set_exec_perm import setExecutePermission
 from resources.utils.set_font import setFont
 from resources.utils.get_os_lang import isItArabic
 
-async def main():
+from resources.utils.get_system import system
 
+
+async def main():
     DataBase.addOnce(["arabic"], [isItArabic()], "app")
 
     DataBase.addOnce(
@@ -27,8 +30,6 @@ async def main():
     )
 
     DataBase.addOnce(["enable", "custom_url"], [True, ""], table="discord")
-
-    DataBase.get(["arabic"], [isItArabic()], table="app")[0]
 
     # Resets the bundle to default on each start
     DataBase.add(
@@ -74,10 +75,10 @@ async def main():
     # If the current running directory is in the macOS bundle app, or there is no folder called "resources" in the
     # current directory then change the current directory to the executed script directory
     if (
-        str(app_directory).endswith("/Content/MacOS")
-        # the reason why I'm also including the __init__.py is to really make sure we are in the right directory
-        # if a person has a folder called "resources" in the same where the shell ran, this would cause errors
-        or not (Path.cwd() / "resources" / "__init__.py").exists()
+            str(app_directory).endswith("/Content/MacOS")
+            # the reason why I'm also including the __init__.py is to really make sure we are in the right directory
+            # if a person has a folder called "resources" in the same where the shell ran, this would cause errors
+            or not (Path.cwd() / "resources" / "__init__.py").exists()
     ):
         os.chdir(app_directory)
         logger.debug(f"Switched directory to {app_directory}")

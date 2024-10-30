@@ -14,7 +14,8 @@ class NetworkInterfaces:
     def __init__(self) -> None:
         self.interfaces = self.get_interfaces()
 
-    def get_interfaces(self):
+    @staticmethod
+    def get_interfaces():
         interfaces = {}
         for interface, addrs in psutil.net_if_addrs().items():
             for addr in addrs:
@@ -95,7 +96,7 @@ class Serial:
     def getUUID(self):
         try:
             return str(uuid.uuid1())  # Time-based UUID with the machine’s MAC address
-        except:
+        except Exception:
             return "Unknown-UUID"
 
     @property
@@ -186,6 +187,10 @@ class Serial:
 
     @property
     def crossSystemSerial(self):
+        """#TODO: handle the fingerprint right, remove the macaddress unless there is everything else is unknown
+        if there is no disk serial and no motherborad serial and no cpu, then use macaddress
+        if there is only cpu, then use macaddress"""
+
         cpu_id = self.cpuID
         mac_address = self.macaddr
         motherboard_serial = self.motherboardSerialNumber
@@ -197,7 +202,6 @@ class Serial:
 
         # Create a SHA-256 hash of the concatenated string
         # fingerprint_hash = hashlib.sha256(fingerprint_data.encode()).hexdigest()
-
         return fingerprint_data
         # match system:
         #     case "Windows":
@@ -218,7 +222,7 @@ class UserCredentials:
             result = requests.get(url="https://ipinfo.io", timeout=10)
             return result.json()
         except subprocess.CalledProcessError as e:
-            return f"An error occurred: {e}"
+            logger.error(f"An error occurred: {e}")
 
     @property
     def user(self):

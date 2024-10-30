@@ -70,9 +70,10 @@ class SplashScreen(tk.Toplevel):
 
         self.canvas.create_image(214, 119, image=self.photo, anchor="center")
 
-    def interpolate_color(self, start_color, end_color, t):
-        start_color = [int(start_color[i : i + 2], 16) for i in (1, 3, 5)]
-        end_color = [int(end_color[i : i + 2], 16) for i in (1, 3, 5)]
+    @staticmethod
+    def interpolate_color(start_color, end_color, t):
+        start_color = [int(start_color[i: i + 2], 16) for i in (1, 3, 5)]
+        end_color = [int(end_color[i: i + 2], 16) for i in (1, 3, 5)]
 
         r = int(start_color[0] + (end_color[0] - start_color[0]) * t)
         g = int(start_color[1] + (end_color[1] - start_color[1]) * t)
@@ -80,7 +81,8 @@ class SplashScreen(tk.Toplevel):
 
         return f"#{r:02x}{g:02x}{b:02x}"
 
-    def ease_in_out(self, t):
+    @staticmethod
+    def ease_in_out(t):
         return 0.5 * (1 - math.cos(math.pi * t))
 
     def glow(self):
@@ -112,6 +114,6 @@ class SplashScreen(tk.Toplevel):
 
 
 def splash():
-    splash = SplashScreen()
-    splash.after(1000, splash.quit)
-    splash.mainloop()
+    splash_screen = SplashScreen()
+    splash_screen.after(1000, splash_screen.quit)
+    splash_screen.mainloop()

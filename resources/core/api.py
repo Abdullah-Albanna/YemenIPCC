@@ -1,6 +1,5 @@
 import keyring
 import httpx
-from tkinter import messagebox
 from typing import Literal
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization, hashes
@@ -12,6 +11,7 @@ import base64
 from utils.logger_config_class import YemenIPCCLogger
 from database.db import DataBase
 from config.secrets import Env
+from utils.messageboxes import MessageBox
 
 from utils.errors_stack import getStack
 from utils.get_os_lang import isItArabic
@@ -23,7 +23,7 @@ from thread_management.thread_terminator_var import terminate_splash_screen
 
 logger = YemenIPCCLogger().logger
 arabic: bool = DataBase.get(["arabic"], [isItArabic()], "app")[0]
-username: str = DataBase.get(["username"], ["Unknown"], "account")[0]
+username = DataBase.get(["username"], ["Unknown"], "account")[0]
 
 
 public_key_base64 = Env().public_key
@@ -56,8 +56,8 @@ class API:
         except Exception as e:
             logger.error(f"Couldn't encrypt data, error: {e}, stack: {getStack()}")
 
+    @staticmethod
     async def makeRequest(
-        self,
         method: Literal["GET", "POST"],
         url: str,
         headers: dict[str, str] = None,
@@ -202,20 +202,7 @@ class API:
             "Authorization": f'Bearer {keyring.get_password("yemenipcc", username)}',
         }
 
-        # response = requests.get(
-        #     url=f"{self.domain}/genlink", params=payload, headers=headers, timeout=20
-        # )
         url = f"{self.domain}/genlink"
-
-        # async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(20)) as session:
-        #     async with session.get(url, headers=headers, params=payload) as response:
-        #         # json_res: dict = await response.json()
-        #         status = response.status
-        #         try:
-        #             json_res: dict = await response.json()
-        #         except aiohttp.ContentTypeError:
-        #             json_res: dict = {}
-        #         content = await response.read()
 
         json_res, status, content = await self.makeRequest(
             "GET", url, headers=headers, params=payload
@@ -229,8 +216,6 @@ class API:
 
             return error_detail
         else:
-            # with open("file.ipcc", "wb") as file:
-            #     file.write(response.content)
             logger.debug(f"downloaded {bundle}")
 
             return content
@@ -250,10 +235,10 @@ class API:
             # status = qst.status_code
 
             if status == 530:
-                logger.error(f"The api is frozen")
+                logger.error("The api is frozen")
                 terminate_splash_screen.set()
                 sleep(1)
-                messagebox.showerror(
+                MessageBox().showerror(
                     "API Error",
                     (
                         renderBiDiText("خادم التطبيق معلق, يرجى المحاوله لاحقا")
@@ -267,7 +252,7 @@ class API:
                 logger.error("An error occurred in the api")
                 terminate_splash_screen.set()
                 sleep(1)
-                messagebox.showerror(
+                MessageBox().showerror(
                     "error",
                     (
                         renderBiDiText(
@@ -300,7 +285,7 @@ class API:
             )
             terminate_splash_screen.set()
             sleep(1)
-            messagebox.showerror(
+            MessageBox().showerror(
                 "error",
                 (
                     renderBiDiText(

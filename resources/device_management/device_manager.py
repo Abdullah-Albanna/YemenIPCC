@@ -1,20 +1,21 @@
 import tkinter as tk
 import subprocess
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict
 from time import sleep
 
 
 from utils.logger_config_class import YemenIPCCLogger
 from utils.get_bin_path import BinaryPaths
-from database.dict_control import DictControl
+# from database.dict_control import DictControl
 from database.db import DataBase
+from core.idevice import iDevice
 
 from thread_management.thread_starter import startThread
-from utils.managed_process import managedProcess
+# from utils.managed_process import managedProcess
 from misc.resize_dpi import DPIResize
 from arabic_tk.bidid import renderBiDiText
 from utils.set_font import getFont
-from utils.errors_stack import getStack
+# from utils.errors_stack import getStack
 from utils.get_os_lang import isItArabic
 
 from thread_management.thread_terminator_var import terminate
@@ -56,98 +57,108 @@ class DeviceManager:
         self.logged_product_version: str = ""
         self.logged_errors = set()
 
-    def systemActions(self, action: str) -> None:
-        """
-        Controls the iPhone to restart or shutdown or even sleep
-        """
+    # def systemActions(self, action: str) -> None:
+    #     """
+    #     Controls the iPhone to restart or shutdown or even sleep
+    #     """
 
-        with managedProcess([idevicediagnostics, action], **kwargs) as device_process:
-            if device_process is None:
-                return
+        # with managedProcess([idevicediagnostics, action], **kwargs) as device_process:
+        #     if device_process is None:
+        #         return
 
-            stdout = device_process.communicate()[0]
-            stderr = device_process.communicate()[1]
-            result = stderr + stdout
+        #     stdout = device_process.stdout
+        #     stderr = device_process.stderr
+        #     result = stderr + stdout
 
-            if "ERROR" in result:
-                color = "red"
-                logger.warning(result)
-            elif "No device found." in result:
-                logger.debug(result)
-                color = "yellow"
-                result = (
-                    renderBiDiText("لم يتم العثور على جهاز متصل") if arabic else result
-                )
-            else:
-                color = "green"
-                logger.debug(result)
+        #     if "ERROR" in result:
+        #         color = "red"
+        #         logger.warning(result)
+        #     elif "No device found." in result:
+        #         logger.debug(result)
+        #         color = "yellow"
+        #         result = (
+        #             renderBiDiText("لم يتم العثور على جهاز متصل") if arabic else result
+        #         )
+        #     else:
+        #         color = "green"
+        #         logger.debug(result)
 
-            self.log_text.tag_configure(color, foreground=color)
-            self.log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
-            self.log_text.insert(tk.END, f"\n{result}\n", color)
-            self.log_text.see(tk.END)
+        #     self.log_text.tag_configure(color, foreground=color)
+        #     self.log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
+        #     self.log_text.insert(tk.END, f"\n{result}\n", color)
+        #     self.log_text.see(tk.END)
 
-    def validateDevice(self) -> bool:
-        """
-        Checks if the device is really paired
-        """
-        try:
-            # Runs ideviceinfo, which is used to get the iPhone information, and catch the errors, if there is no, then it is good to go
-            with managedProcess([ideviceinfo], **kwargs):
-                pass
-            return True
-        except subprocess.CalledProcessError as e:
-            error_message: str = e.stderr.strip()
-            logger.error(
-                f"An error occurred in the validation of the device, error: {error_message}, stack: {getStack()}"
-            )
-            if "Could not connect to lockdownd: SSL error (-5)" in error_message:
-                return False
-            elif "Device validation failed: unhandled error code -5" in error_message:
-                self.connected_status.config(
-                    text="Please Reconnect the USB and Trust Again", fg="red"
-                )
-                return False
+    # def validateDevice(self) -> bool:
+    #     """
+    #     Checks if the device is really paired
+    #     """
+    #     try:
+    #         # Runs ideviceinfo, which is used to get the iPhone information, and catch the errors, if there is no, then it is good to go
+    #         with managedProcess([ideviceinfo], **kwargs):
+    #             pass
+    #         return True
+    #     except subprocess.CalledProcessError as e:
+    #         error_message: str = e.stderr.strip()
+    #         logger.error(
+    #             f"An error occurred in the validation of the device, error: {error_message}, stack: {getStack()}"
+    #         )
+    #         if "Could not connect to lockdownd: SSL error (-5)" in error_message:
+    #             return False
+    #         elif "Device validation failed: unhandled error code -5" in error_message:
+    #             self.connected_status.config(
+    #                 text="Please Reconnect the USB and Trust Again", fg="red"
+    #             )
+    #             return False
 
-    def extractValuesFromLog(self) -> Tuple[int, str] | None:
+    def extractValuesFromLog(self) -> Tuple[str, str] | None:
         """
         Extracts some information about the connected device
         """
 
-        product_version: int = 0
+        product_version: str = ""
         product_type: str = ""
         try:
-            # -s is short for "short", maybe
-            with managedProcess([ideviceinfo, "-s"], **kwargs) as device_info:
-                if device_info is None:
-                    return
-                stdout = device_info.communicate()[0]
-                stderr = device_info.communicate()[1]
-                output_lines: List[str] = stdout.splitlines() + stderr.splitlines()
-                if stderr != "":
-                    if "Could not connect to lockdownd" in stderr:
-                        # This occurres when you accept the restart dialog at the end of the injection, so we want to log once
-                        if DictControl().shouldRun("logged_lockdownd_error"):
-                            logger.warning(
-                                f"An error occurred in the extraction of the idevoce info, error: {stderr}"
-                            )
-                    else:
-                        if "ERROR: No device found!":
-                            pass
-                        else:
-                            logger.warning(
-                                f"An error occurred in the extraction of the idevoce info, error: {stderr}"
-                            )
+            device_info = iDevice.deviceInfo()
 
-            # This one look for the iPhone type and its version, and saves it to the above variables
-            for line in output_lines:
-                if "ProductVersion:" in line:
-                    product_version = line.split("ProductVersion:")[
-                        1
-                    ].strip()  # The "1" is for the whitespace
+            product_type = device_info.get("ProductType", "Unknown")
+            product_version = device_info.get("ProductVersion", "Unknown")
+            # # -s is short for "short", maybe
+            # with managedProcess([ideviceinfo, "-s"], **kwargs) as device_info:
+            #     if device_info is None:
+            #         return
+            #     stdout = device_info.stdout
+            #     stderr = device_info.stderr
 
-                if "ProductType:" in line:
-                    product_type = line.split("ProductType:")[1].strip()
+            #     if DictControl().shouldRun("idevice_info_stdout") and stdout:
+            #         logger.debug(f"ideviceinfo stdout:\n\n {stdout}")
+
+            #     if stderr:
+            #         if "Could not connect to lockdownd" in stderr:
+            #             # This occurres when you accept the restart dialog at the end of the injection, so we want to log once
+            #             if DictControl().shouldRun("logged_lockdownd_error"):
+            #                 logger.warning(
+            #                     f"An error occurred in the extraction of the idevice info, error: {stderr}"
+            #                 )
+            #             return
+            #         else:
+            #             if "ERROR: No device found!":
+            #                 DictControl().runAgain("idevice_info_stdout")
+            #                 return
+            #             else:
+            #                 logger.warning(
+            #                     f"An error occurred in the extraction of the idevice info, error: {stderr}"
+            #                 )
+            #                 return
+
+            # output_lines: List[str] = stdout.splitlines() + stderr.splitlines()
+
+            # # This one look for the iPhone type and its version, and saves it to the above variables
+            # for line in output_lines:
+            #     if "ProductVersion:" in line:
+            #         product_version = line.split("ProductVersion:")[1].strip()  # The "1" is for the whitespace
+
+            #     elif "ProductType:" in line:
+            #         product_type = line.split("ProductType:")[1].strip()
 
             DataBase.add(
                 ["iPhone_version", "iPhone_model"],
@@ -223,8 +234,7 @@ class DeviceManager:
             )
             self.log_text.see(tk.END)
             self.connected_status.config(text="Please Trust this Computer", fg="green")
-            with managedProcess([f"{idevicepair}", "pair"], **kwargs):
-                pass
+            iDevice.pair()
 
         return product_version, product_type
 
@@ -234,21 +244,24 @@ class DeviceManager:
         """
 
         try:
-            # This prints the iPhone id, whether it is trusted or not, which is good, we only want to know if it plugged or not
-            with managedProcess([idevice_id, "-l"], **kwargs) as result:
-                if result is None:
-                    return False
-                stdout = result.communicate()[0]
-                stderr = result.communicate()[1]
+            # # This prints the iPhone id, whether it is trusted or not, which is good, we only want to know if it plugged or not
+            # with managedProcess([idevice_id, "-l"], **kwargs) as result:
+            #     if result is None:
+            #         return False
+            #     stdout = result.stdout
+            #     stderr = result.stderr
 
-                if stderr:
-                    if "Unable to retrieve device list!" not in stderr:
-                        if stderr not in self.logged_errors:
-                            logger.error(
-                                f"An error occurred in the checkIfPlugged, error: {stderr}, stack: {getStack()}"
-                            )
-                            self.logged_errors.add(stderr)
-                return bool(stdout.strip())
+            #     if stderr:
+            #         if "Unable to retrieve device list!" not in stderr:
+            #             if stderr not in self.logged_errors:
+            #                 logger.error(
+            #                     f"An error occurred in the checkIfPlugged, error: {stderr}, stack: {getStack()}"
+            #                 )
+            #                 self.logged_errors.add(stderr)
+            #     return bool(stdout.strip())
+
+            return iDevice.isPlugged()
+
         except subprocess.CalledProcessError:
             return False
 
@@ -281,32 +294,33 @@ class DeviceManager:
         while True:
             plugged = self.checkIfPlugged()
 
-            # if it is plugged and returns False on the validation, we need to trust the device
-            if not self.validateDevice() and plugged:
-                self.log_text.tag_configure("red", foreground="red")
-                self.log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
-                self.log_text.insert(
-                    tk.END,
-                    (
-                        renderBiDiText("\nفشل التحقق من الجهاز: رمز خطأ غير معالج -5\n")
-                        if arabic
-                        else "\nDevice validation failed: unhandled error code -5\n"
-                    ),
-                    "red",
-                )
-                self.log_text.see(tk.END)
-                self.connected_status.config(
-                    text=(
-                        renderBiDiText("يرجى إعادة توصيل الجهاز ومنح الثقة")
-                        if arabic
-                        else "Please Reconnect the USB and Trust"
-                    ),
-                    fg="red",
-                )
-                sleep(1)
-                with managedProcess([f"{idevicepair}", "pair"], **kwargs):
-                    pass
-                sleep(1)
+            # # if it is plugged and returns False on the validation, we need to trust the device
+            # if not self.validateDevice() and plugged:
+            #     self.log_text.tag_configure("red", foreground="red")
+            #     self.log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
+            #     self.log_text.insert(
+            #         tk.END,
+            #         (
+            #             renderBiDiText("\nفشل التحقق من الجهاز: رمز خطأ غير معالج -5\n")
+            #             if arabic
+            #             else "\nDevice validation failed: unhandled error code -5\n"
+            #         ),
+            #         "red",
+            #     )
+            #     self.log_text.see(tk.END)
+            #     self.connected_status.config(
+            #         text=(
+            #             renderBiDiText("يرجى إعادة توصيل الجهاز ومنح الثقة")
+            #             if arabic
+            #             else "Please Reconnect the USB and Trust"
+            #         ),
+            #         fg="red",
+            #     )
+            #     sleep(1)
+            #     # with managedProcess([f"{idevicepair}", "pair"], **kwargs):
+            #     #     pass
+            #     iDevice.pair()
+            #     sleep(1)
 
             if plugged:
                 # We don not want thoes to be global from the extractValuesFromLog because we need to to repeatedly know what device is connected

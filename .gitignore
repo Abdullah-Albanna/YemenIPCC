@@ -5,6 +5,7 @@ temp_excludes
 *.build
 *.onefile-build
 *.dist
+*.xml
 compile.py
 .env
 winvenv
@@ -23,7 +24,7 @@ discord_webhook
 k.py
 logs.txt
 settings.json
-todos.txt
 UUID
 temp.py
 drivers
+todos.txt

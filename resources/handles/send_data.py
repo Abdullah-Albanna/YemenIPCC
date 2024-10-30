@@ -75,7 +75,7 @@ def sendData(
     if domain is None:
         return
 
-    url = f"https://app.{domain}/track"  ##
+    url = f"https://app.{domain}/track"
     headers = {"Content-Type": "application/json", "X-API-Key": API_KEY}
     payload = {"event": event, "data": {}}
 

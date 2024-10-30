@@ -148,7 +148,12 @@ class BinaryPaths:
         }
 
         if system == "Windows":
-            self.kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW  # type: ignore
+            startupinfo = subprocess.STARTUPINFO()  # type: ignore
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW  # type: ignore
+            startupinfo.wShowWindow = subprocess.SW_HIDE  # type: ignore
+
+            # self.kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW  # type: ignore
+            self.kwargs["startupinfo"] = startupinfo
 
     def getPaths(self) -> Dict[str, dict | str]:
         """

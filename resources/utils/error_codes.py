@@ -1,11 +1,12 @@
-from enum import Enum
+from enum import auto, Flag
 
 
-class ErrorCodes(Enum):
-    SUCCESS = 0
-    FILE_NOT_FOUND = 1
-    INVALID_INPUT = 2
-    NETWORK_ERROR = 3
-    PERMISSION_DENIED = 4
-    TIMEOUT = 5
-    UNKNOWN_ERROR = 99
+class ErrorCodes(Flag):
+    SUCCESS = auto()
+    FILE_NOT_FOUND = auto()
+    INVALID_INPUT = auto()
+    NETWORK_ERROR = auto()
+    PERMISSION_DENIED = auto()
+    TIMEOUT = auto()
+    PROCESS_ERROR = auto()
+    UNKNOWN_ERROR = auto()

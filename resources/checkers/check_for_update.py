@@ -1,11 +1,11 @@
 import requests
 import webbrowser
 import re
-from tkinter import messagebox
 
 from database.db import DataBase
 from config.secrets import Env
 from utils.logger_config_class import YemenIPCCLogger
+from utils.messageboxes import MessageBox
 
 from checkers.check_for_internet import checkInternetConnection
 from arabic_tk.bidid import renderBiDiText
@@ -71,8 +71,7 @@ def checkForUpdate(current_version: str, max_lines: int = 30) -> bool | str:
                 # Crop the message if it exceeds max_length lines
                 if lines > max_lines:
                     message = (
-                        "\n".join(message.splitlines()[:max_lines])
-                        + "... Click Yes to Read the Rest"
+                        "\n".join(message.splitlines()[:max_lines]) + "... Click Yes to Read the Rest"
                     )
 
                 size_mb = round(size / (1024 * 1024), 2)
@@ -89,7 +88,7 @@ def checkForUpdate(current_version: str, max_lines: int = 30) -> bool | str:
                     f"الرسالة:\n{message}"
                 )
 
-                if not messagebox.askyesno(
+                if not MessageBox().askyesno(
                     "Update Available",
                     arabic_update_message if arabic else update_message,
                 ):
@@ -115,7 +114,7 @@ def checkForUpdateButton(current_version: str) -> None:
     """
     update_result = checkForUpdate(current_version)
     if update_result == "No Update":
-        messagebox.showinfo(
+        MessageBox().showinfo(
             "Check for Update",
             (
                 renderBiDiText("Yemen IPCC\n محدث الى اخر اصدار")
@@ -124,7 +123,7 @@ def checkForUpdateButton(current_version: str) -> None:
             ),
         )
     elif update_result == "No Internet":
-        messagebox.showerror(
+        MessageBox().showerror(
             "Error",
             (
                 renderBiDiText("يرجى الاتصال بالانترنت")
@@ -133,7 +132,7 @@ def checkForUpdateButton(current_version: str) -> None:
             ),
         )
     elif update_result == "rate limit":
-        messagebox.showerror(
+        MessageBox().showerror(
             "Error",
             (
                 renderBiDiText("يرجى المحاوله بعد ساعه")

@@ -3,8 +3,9 @@ import subprocess
 import os
 import asyncio
 import textwrap
+import psutil
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import filedialog
 from tkinter.ttk import Progressbar, Style
 from tempfile import TemporaryDirectory
 from threading import Event
@@ -17,11 +18,14 @@ from device_management.device_manager import DeviceManager
 from database.db import DataBase
 from core.api import API
 from utils.event_loop import NewEventLoop
+from utils.error_codes import ErrorCodes
+from utils.messageboxes import MessageBox
+from core.idevice import iDevice
 
 from thread_management.thread_starter import startThread
 from checkers.check_for_internet import checkInternetConnection
 from handles.send_data import sendData
-from utils.managed_process import managedProcess
+# from utils.managed_process import managedProcess
 from utils.set_font import getFont
 from arabic_tk.bidid import renderBiDiText
 from utils.errors_stack import getStack
@@ -30,6 +34,7 @@ from utils.get_app_dir import getAppDirectory
 
 from thread_management.thread_terminator_var import terminate
 from utils.app_messages import new_iPhone_message, arabic_new_iphone_message
+from utils.get_system import system
 
 # A list of the iPhone version that requires a special treatment
 new_iPhones = [
@@ -83,54 +88,6 @@ def readSysLog(log_queue, stop_event) -> None:
         logger.debug("Stoppted readSysLog")
 
 
-# async def isFileDownloadable(url) -> bool:
-#     """
-#     Checks if the file exists or not by testing the downloading ability
-#     """
-#     # We well use aiohttp with async to get the fastest result
-#     connector = aiohttp.TCPConnector(force_close=True)
-#     async with aiohttp.ClientSession(connector=connector) as session:
-#         try:
-#             async with session.head(url, allow_redirects=True) as response:
-#                 # Check if the request was successful
-#                 if response.status != 200:
-#                     return False
-
-#                 # Get the content type
-#                 content_type = response.headers.get("Content-Type", "").lower()
-
-#                 # Check if the content type is not HTML
-#                 if "text/html" in content_type:
-#                     return False
-
-#                 # Check for Content-Disposition header to see if it's an attachment
-#                 content_disposition = response.headers.get(
-#                     "Content-Disposition", ""
-#                 ).lower()
-#                 if "attachment" in content_disposition:
-#                     return True
-
-#                 # If there is no Content-Disposition header, infer from content type
-#                 if content_type in ["application/octet-stream", "application/zip"]:
-#                     return True
-
-#                 return False
-
-#         except aiohttp.ClientSSLError as e:
-#             logger.error(f"SSL Error: {e}, stack: {getStack()}")
-#             fixSSL()
-#             return False
-
-#         except aiohttp.ClientError as e:
-#             logger.error(
-#                 f"An error occurred in the checking for the avalibility of a bundle: {e}, stack: {getStack()}"
-#             )
-#             return False
-
-#         finally:
-#             await session.close()
-
-
 def replace_space(string):
     return string.replace(" ", "")
 
@@ -152,8 +109,6 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
     Args:
         window (tk.Tk): The tkinter window.
         log_text (tk.Text): The text widget for logger.
-        selected_bundle (str): The selected bundle name.
-        selected_container (str): The selected option name.
     """
     selected_bundle, selected_container = DataBase.get(
         ["selected_bundle", "selected_container"],
@@ -164,7 +119,7 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
     DataBase.add(["running"], [True], "injection")
     try:
         if not checkInternetConnection():
-            messagebox.showerror(
+            MessageBox().showerror(
                 "No Internet",
                 (
                     renderBiDiText("تاكد من الاتصال بالانترنت")
@@ -294,7 +249,7 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
                 )
             )
 
-            messagebox.showerror(
+            MessageBox().showerror(
                 "Bundle not Found", arabic_message if arabic else message
             )
             return
@@ -303,7 +258,7 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
             progress_bar.stop()
             progress_bar.destroy()
             progress_label.destroy()
-            messagebox.showerror(
+            MessageBox().showerror(
                 "limited", "you can't download any more today, try tomorrow"
             )
             logger.error(
@@ -317,7 +272,7 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
             if not product_type == new_iPhone:
                 continue
             logger.info("User have a new iPhone")
-            messagebox.showinfo(
+            MessageBox().showinfo(
                 "Instructions",
                 arabic_new_iphone_message if arabic else new_iPhone_message,
             )
@@ -339,51 +294,58 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
         window.update_idletasks()  # Update the label text
 
         # Remove old IPCC file
-        with managedProcess(
-            [ideviceinstaller, "install", remove_bundle_file], **kwargs
-        ) as remove_process:
-            stdout = remove_process.communicate()[0]
-            stderr = remove_process.communicate()[1]
-            result = stdout + stderr
+        # with managedProcess(
+        #     [ideviceinstaller, "install", remove_bundle_file], **kwargs
+        # ) as remove_process:
+        #     stdout = remove_process.stdout
+        #     stderr = remove_process.stderr
+        #     result = stdout + stderr
+
+        remove_process = iDevice.install(remove_bundle_file)
 
         # If validate is set, and it is not a new phone, it slows down a bit
         if DataBase.get(["validate"], [True], "injection")[0] and not is_new_iPhone:
-            sleep(
-                20
-            )  # Why?, well some devices need sometime to process the removal, so it waits for that
+            # Why?, well some devices need sometime to process the removal, so it waits for that
+            sleep(20)
         else:
             # Else fast, because it is not needed to check
             sleep(7)
 
-        if "Could not connect to lockdownd. Exiting." not in result:
-            # Colors the logs
-            if "SUCCESS: " in result:
-                color = "green"
-            elif "Install: Complete" in result:
-                color = "green"
-                result = renderBiDiText("تم حذف الملف السابق") if arabic else result
-            elif "ERROR: " in result:
-                logger.error(
-                    f"An error happened in the removal, error: {result}, stack: {getStack()}"
-                )
-                color = "red"
-            elif "No device found" in result:
-                color = "red"
-                result = (
-                    renderBiDiText("لم يتم العثور على جهاز متصل")
-                    if arabic
-                    else "No device found"
-                )
-            else:
-                color = "grey"
+        if remove_process:
+        # if "Could not connect to lockdownd. Exiting." not in result:
+        #     # Colors the logs
+        #     if "SUCCESS: " in result:
+        #         color = "green"
+        #     elif "Install: Complete" in result:
+        #         color = "green"
+        #         result = renderBiDiText("تم حذف الملف السابق") if arabic else result
+        #     elif "ERROR: " in result:
+        #         logger.error(
+        #             f"An error happened in the removal, error: {result}, stack: {getStack()}"
+        #         )
+        #         color = "red"
+        #     elif "No device found" in result:
+        #         color = "red"
+        #         result = (
+        #             renderBiDiText("لم يتم العثور على جهاز متصل")
+        #             if arabic
+        #             else "No device found"
+        #         )
+        #     else:
+        #         color = "grey"
 
-            log_text.tag_configure(color, foreground=color)
+            # log_text.tag_configure(color, foreground=color)
+            # log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
+            # log_text.insert(tk.END, f"\n{result}\n", color)
+            # log_text.see(tk.END)
+
+            log_text.tag_configure("green", foreground="green")
             log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
-            log_text.insert(tk.END, f"\n{result}\n", color)
+            log_text.insert(tk.END, f"\n{"Successfully removed old IPCC"}\n", "green")
             log_text.see(tk.END)
         else:
             logger.error("Trust error")
-            messagebox.showerror(
+            MessageBox().showerror(
                 "Trust Error",
                 (
                     renderBiDiText("يرجى اعادة تركيب الجهاز وحاول مره اخرى")
@@ -396,6 +358,8 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
         # Sets up a temporary path for the selected .ipcc file to be downloaded to
         with TemporaryDirectory() as temp_dir:
             temp_dir = Path(temp_dir).resolve()
+
+            os.chmod(temp_dir, 0o777)
 
             logger.debug(f"Temporary directory for the .ipcc: {temp_dir}")
             progress_label.config(
@@ -412,7 +376,8 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
             # Gets the current directory and saves it for later
             last_dir = os.getcwd()
 
-            # We go to the temporary directory so it would download there (can be used in other ways, but I find this the best for cross-platform)
+            # We go to the temporary directory so it would download there (can be used in other ways, but I find this
+            # the best for cross-platform)
             os.chdir(temp_dir)
 
             # download_process = subprocess.Popen(
@@ -476,56 +441,65 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
                 log_queue = []
                 stop_event = Event()
                 startThread(
-                    target=lambda: readSysLog(log_queue, stop_event),
+                    target=lambda: iDevice.liveSysLog(log_queue, stop_event),
                     name="read syslog",
                     daemon=False,
                 )
 
             # Inject .ipcc
-            with managedProcess(
-                [ideviceinstaller, "install", downloaded_file_path], **kwargs
-            ) as injecting_process:
-                stdout = injecting_process.communicate()[0]
-                stderr = injecting_process.communicate()[1]
-                result = stdout + stderr
+            # with managedProcess(
+            #     [ideviceinstaller, "install", downloaded_file_path], **kwargs
+            # ) as injecting_process:
+            #     stdout = injecting_process.stdout
+            #     stderr = injecting_process.stderr
+            #     result = stdout + stderr
+            injecting_process = iDevice.install(downloaded_file_path)
+            os.remove(downloaded_file_path)
 
-            if "Could not connect to lockdownd. Exiting." not in result:
-                # Red if error, Green if success
-                if "SUCCESS: " in result:
-                    color = "green"
-                elif "Install: Complete" in result:
-                    color = "green"
-                    result = (
-                        renderBiDiText(f"بنجاح {selected_bundle} تم تثبيت ملف ال ")
-                        if arabic
-                        else result
-                    )
-                elif "ERROR: " in result:
-                    logger.error(
-                        f"An error accoured in the injection of the file, error: {result}, stack: {getStack()}"
-                    )
-                    color = "red"
-                elif "No device found":
-                    color = "red"
-                    result = (
-                        renderBiDiText("لم يتم العثور على جهاز متصل")
-                        if arabic
-                        else "No device found"
-                    )
-                else:
-                    color = "grey"
+            if injecting_process:
+                logs_result = "Injected {}".format(downloaded_file_path.name)
+                color = "green"
+            else:
+                logs_result = "Couldn't inject {}".format(downloaded_file_path.name)
+                color = "red"
 
-                log_text.tag_configure(color, foreground=color)
-                log_text.insert(
-                    tk.END,
-                    (
-                        renderBiDiText("------⸻⸻الإدخال⸻⸻------")
-                        if arabic
-                        else "------⸻⸻Injecting⸻⸻------"
-                    ),
-                )
-                log_text.insert(tk.END, f"\n{result}\n", color)
-                log_text.see(tk.END)
+            # if "Could not connect to lockdownd. Exiting." not in result:
+            #     # Red if error, Green if success
+            #     if "SUCCESS: " in result:
+            #         color = "green"
+            #     elif "Install: Complete" in result:
+            #         color = "green"
+            #         result = (
+            #             renderBiDiText(f"بنجاح {selected_bundle} تم تثبيت ملف ال ")
+            #             if arabic
+            #             else result
+            #         )
+            #     elif "ERROR: " in result:
+            #         logger.error(
+            #             f"An error accoured in the injection of the file, error: {result}, stack: {getStack()}"
+            #         )
+            #         color = "red"
+            #     elif "No device found":
+            #         color = "red"
+            #         result = (
+            #             renderBiDiText("لم يتم العثور على جهاز متصل")
+            #             if arabic
+            #             else "No device found"
+            #         )
+            #     else:
+            #         color = "grey"
+
+            log_text.tag_configure(color, foreground=color)
+            log_text.insert(
+                tk.END,
+                (
+                    renderBiDiText("------⸻⸻الإدخال⸻⸻------")
+                    if arabic
+                    else "------⸻⸻Injecting⸻⸻------"
+                ),
+            )
+            log_text.insert(tk.END, f"\n{logs_result}\n", color)
+            log_text.see(tk.END)
 
             if DataBase.get(["validate"], [True], "injection")[0] and not is_new_iPhone:
                 progress_bar.stop()
@@ -566,10 +540,6 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
                 # Collect logs from the syslog thread and stop it
                 logs_result = "\n".join(log_queue)
                 stop_event.set()
-            else:
-                # Stops and destroy the progress frame
-                progress_bar.stop()
-                progress_frame.destroy()
 
             # else:
             #     # If the download process failed
@@ -654,6 +624,7 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
 
             validate_progress_bar.destroy()
             validate_progress_label.destroy()
+
         window.update_idletasks()
 
         # This is a just-in-case, if you have a new phone, it would ask if you want to restart the device
@@ -662,7 +633,7 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
                 continue
             if download_process.wait() != 0:
                 continue
-            if not messagebox.askyesno(
+            if not MessageBox().askyesno(
                 "Restart",
                 (
                     renderBiDiText(
@@ -675,19 +646,54 @@ async def removingAndInjectingIPCC(window: tk.Tk, log_text: tk.Text) -> None:
                 logger.info("User declined the restart of his new iPhone")
                 continue
 
-            with managedProcess(
-                [idevicediagnostics, "restart"], **kwargs
-            ) as restart_process:
-                stdout = restart_process.communicate()[0]
-                stderr = restart_process.communicate()[1]
-                if stdout:
-                    logger.debug(stdout)
-                elif stderr:
-                    logger.warning(stderr)
+            # with managedProcess(
+            #     [idevicediagnostics, "restart"], **kwargs
+            # ) as restart_process:
+            #     stdout = restart_process.stdout
+            #     stderr = restart_process.stderr
+            #     if stdout:
+            #         logger.debug(stdout)
+            #     elif stderr:
+            #         logger.warning(stderr)
 
+            iDevice.systemActions("restart")
+
+    except PermissionError as pe:
+        if system == "Windows":
+            if pe.winerror == 32:
+                for proc in psutil.process_iter(["pid", "name"]):
+                    try:
+                        open_files = proc.open_files()
+
+                        for file in open_files:
+                            if file.path == str(temp_dir) or file.path.startswith(str(temp_dir)):
+                                logger.error(f"Process {proc.info['name']} (PID: {proc.info['pid']}) has file {file.path} open.")
+                                MessageBox().showerror(f"{ErrorCodes.PERMISSION_DENIED.value} Permission denied, \n\nthe {proc.info["name"]} is using the {file.path} file, please close it")
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+
+    except Exception as e:
+        logger.error(f"Error: {e}, stack: {getStack()}")
+        # for proc in psutil.process_iter(['pid', 'name']):
+        # try:
+        #     open_files = proc.open_files()
+        #     for file in open_files:
+        #         # Check if the open file belongs to the directory
+        #         if file.path.startswith(directory):
+        #             print(f"Process {proc.info['name']} (PID: {proc.info['pid']}) has file {file.path} open.")
+        # except (psutil.NoSuchProcess, psutil.AccessDenied):
+        #     # Handle processes that no longer exist or are not accessible
+        #     continue
     finally:
-        # And finaly activates the button
+        # activates the button again
         DataBase.add(["running"], [False], "injection")
+
+        # Stops and destroy the progress frame
+        progress_bar.stop()
+        progress_frame.destroy()
+        progress_label.destroy()
+
+        window.update_idletasks()
 
 
 def injection(window: tk.Tk, log_text: tk.Text) -> None:
@@ -697,8 +703,6 @@ def injection(window: tk.Tk, log_text: tk.Text) -> None:
     Args:
         window (tk.Tk): The tkinter window.
         log_text (tk.Text): The text widget for logger.
-        selected_bundle (str): The selected bundle name.
-        selected_container (str): The selected option name.
     """
 
     asyncio.run_coroutine_threadsafe(removingAndInjectingIPCC(window, log_text), loop)
@@ -719,34 +723,41 @@ def injectFromFile(log_text) -> None:
     )
 
     if filepath:
-        with managedProcess(
-            [ideviceinstaller, "install", filepath], **kwargs
-        ) as inject_from_file_process:
-            # pass
-            stdout = inject_from_file_process.communicate()[0]
-            stderr = inject_from_file_process.communicate()[1]
-            result = stdout + stderr
-            # Colors the logs
-            if "SUCCESS: " in result:
-                color = "green"
-            elif "Install: Complete" in result:
-                color = "green"
-                result = f"تم تثبيت الملف \n {filepath}\n بنجاح"
-            elif "ERROR: " in result:
-                logger.error(
-                    f"An error happened in the manual inject, error: {result}, stack: {getStack()}"
-                )
-                color = "red"
-            elif "No device found" in result:
-                color = "red"
-                result = "لم يتم العثور على جهاز متصل" if arabic else "No device found"
-            else:
-                color = "grey"
+        # with managedProcess(
+        #     [ideviceinstaller, "install", filepath], **kwargs
+        # ) as inject_from_file_process:
+        #     # pass
+        #     stdout = inject_from_file_process.stdout
+        #     stderr = inject_from_file_process.stderr
+        #     result = stdout + stderr
+        #     # Colors the logs
+        #     if "SUCCESS: " in result:
+        #         color = "green"
+        #     elif "Install: Complete" in result:
+        #         color = "green"
+        #         result = f"تم تثبيت الملف \n {filepath}\n بنجاح"
+        #     elif "ERROR: " in result:
+        #         logger.error(
+        #             f"An error happened in the manual inject, error: {result}, stack: {getStack()}"
+        #         )
+        #         color = "red"
+        #     elif "No device found" in result:
+        #         color = "red"
+        #         result = "لم يتم العثور على جهاز متصل" if arabic else "No device found"
+        #     else:
+        #         color = "grey"
 
-            log_text.tag_configure(color, foreground=color)
-            log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
-            log_text.insert(tk.END, f"\n{result}\n", color)
-            log_text.see(tk.END)
+        if iDevice.install(filepath):
+            result = "Injected {}".format(Path(filepath).name)
+            color = "green"
+        else:
+            result = "Failed to inject {}".format(Path(filepath).name)
+            color = "red"
+
+        log_text.tag_configure(color, foreground=color)
+        log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
+        log_text.insert(tk.END, f"\n{result}\n", color)
+        log_text.see(tk.END)
 
 
 def cleanRemove(window: tk.Tk, log_text: tk.Text) -> None:
@@ -758,7 +769,7 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text) -> None:
         window: tk.Tk --> the tkinter window.
         log_text: tk.Text --> The text widget for logger
     """
-    if not messagebox.askokcancel(
+    if not MessageBox().askokcancel(
         "Clean Bundles",
         (
             renderBiDiText(
@@ -773,27 +784,28 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text) -> None:
     DataBase.add(["running"], [True], "injection")
 
     # Check if device is connected
-    with managedProcess([ideviceinfo, "-s"], **kwargs) as proc:
-        stdout = proc.communicate()[0]
-        stderr = proc.communicate()[1]
-        result = stdout + stderr
-        if "No device found" in result:
-            logger.warning(
-                "There is was no device connected while doing a clean removal"
-            )
-            log_text.tag_configure("yellow", foreground="yellow")
-            log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
-            log_text.insert(
-                tk.END,
-                (
-                    renderBiDiText("لم يتم العثور على جهاز متصل\n\n")
-                    if arabic
-                    else "\nNo device found, is it plugged in?\n"
-                ),
-                "yellow",
-            )
-            log_text.see(tk.END)
-            return
+    # with managedProcess([ideviceinfo, "-s"], **kwargs) as proc:
+    #     stdout = proc.stdout
+    #     stderr = proc.stderr
+    #     result = stdout + stderr
+    #     if "No device found" in result:
+    if not iDevice.isPlugged():
+        logger.warning(
+            "There is was no device connected while doing a clean removal"
+        )
+        log_text.tag_configure("yellow", foreground="yellow")
+        log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
+        log_text.insert(
+            tk.END,
+            (
+                renderBiDiText("لم يتم العثور على جهاز متصل\n\n")
+                if arabic
+                else "\nNo device found, is it plugged in?\n"
+            ),
+            "yellow",
+        )
+        log_text.see(tk.END)
+        return
 
     # Create custom style for the progress bar. It looks better
     style = Style()
@@ -817,7 +829,6 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text) -> None:
     progress_frame = tk.Frame(window, bg=medium_color)
     progress_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-    # Progress label
     progress_label = tk.Label(
         progress_frame,
         text="Progress:",
@@ -827,7 +838,6 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text) -> None:
     )
     progress_label.pack(pady=5)
 
-    # Progress bar
     progress_bar = Progressbar(
         progress_frame,
         orient="horizontal",
@@ -848,10 +858,6 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text) -> None:
         "USCellular",
     ]
     # Files to remove
-    # remove_bundles_files: List[str] = [
-    #     os.path.join(".", "resources", "removes_ipcc", f"Remove({name}).ipcc")
-    #     for name in removes
-    # ]
     remove_bundles_files = [
         getAppDirectory() / "resources" / "removes_ipcc" / f"Remove({name}).ipcc"
         for name in removes
@@ -870,47 +876,55 @@ def cleanRemove(window: tk.Tk, log_text: tk.Text) -> None:
         )
         window.update_idletasks()  # Update the label text
 
-        with managedProcess(
-            [ideviceinstaller, "install", file_path], **kwargs
-        ) as remove_proc:
-            stdout = remove_proc.communicate()[0]
-            stderr = remove_proc.communicate()[1]
-            result = stdout + stderr
+        remove_proc = iDevice.install(file_path)
 
-            if "SUCCESS: " in result:
-                color = "green"
-                result = (
-                    renderBiDiText(f"{removes[i - 1]} تم حذف الملف السابق")
-                    if arabic
-                    else result
-                )
-            elif "Install: Complete" in result:
-                color = "green"
+        if remove_proc:
+            result = "Injected {}".format(file_path.name)
+            color = "green"
+        else:
+            result = "Failed to Inject {}".format(file_path.name)
+            color = "red"
+        # with managedProcess(
+        #     [ideviceinstaller, "install", file_path], **kwargs
+        # ) as remove_proc:
+        #     stdout = remove_proc.stdout
+        #     stderr = remove_proc.stderr
+        #     result = stdout + stderr
 
-                result = (
-                    renderBiDiText(f"{removes[i - 1]} تم حذف الملف السابق")
-                    if arabic
-                    else result
-                )
-            elif "ERROR: " in result:
-                logger.error(
-                    f"There was an error in the clean removal process, error: {result}, stack: {getStack()}"
-                )
-                color = "red"
-            elif "No device found":
-                color = "red"
-                result = (
-                    renderBiDiText("لم يتم العثور على جهاز متصل") if arabic else result
-                )
-            else:
-                color = "grey"
-            if "SUCCESS: " in result:
-                color = "green"
+        #     if "SUCCESS: " in result:
+        #         color = "green"
+        #         result = (
+        #             renderBiDiText(f"{removes[i - 1]} تم حذف الملف السابق")
+        #             if arabic
+        #             else result
+        #         )
+        #     elif "Install: Complete" in result:
+        #         color = "green"
 
-            log_text.tag_configure(color, foreground=color)
-            log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
-            log_text.insert(tk.END, f"\n{result}\n", color)
-            log_text.see(tk.END)
+        #         result = (
+        #             renderBiDiText(f"{removes[i - 1]} تم حذف الملف السابق")
+        #             if arabic
+        #             else result
+        #         )
+        #     elif "ERROR: " in result:
+        #         logger.error(
+        #             f"There was an error in the clean removal process, error: {result}, stack: {getStack()}"
+        #         )
+        #         color = "red"
+        #     elif "No device found":
+        #         color = "red"
+        #         result = (
+        #             renderBiDiText("لم يتم العثور على جهاز متصل") if arabic else result
+        #         )
+        #     else:
+        #         color = "grey"
+        #     if "SUCCESS: " in result:
+        #         color = "green"
+
+        log_text.tag_configure(color, foreground=color)
+        log_text.insert(tk.END, "⸻⸻⸻⸻⸻⸻⸻")
+        log_text.insert(tk.END, f"\n{result}\n", color)
+        log_text.see(tk.END)
 
         progress_bar["value"] = (i / total_files) * 100
         window.update_idletasks()

@@ -14,3 +14,4 @@ cryptography
 keyring
 pillow
 psutil
+pymobiledevice3

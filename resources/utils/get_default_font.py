@@ -50,7 +50,7 @@ def getLinuxDefaultFont() -> str:
         with managedProcess(
             ["ps", "-e", "-o", "comm="], stdout=subprocess.PIPE
         ) as process:
-            stdout, _ = process.communicate()
+            stdout = process.stdout
             running_processes = stdout.decode().splitlines()
 
         # Check for known processes

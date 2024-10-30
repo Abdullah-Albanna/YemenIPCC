@@ -29,7 +29,8 @@ class YemenIPCCLogger:
         self.logger = logger.patch(self.sendToDiscord)
         self.logs_path = getExecutablePath() / "logs.txt"
 
-    def getTempdir(self) -> str:
+    @staticmethod
+    def getTempdir() -> str:
         """
         Returns the temporary folder
         """
@@ -132,7 +133,8 @@ class YemenIPCCLogger:
 
     #     return self.DISCORD_WEBHOOK_URL, enable, custom_url
 
-    def getCPU(self) -> str:
+    @staticmethod
+    def getCPU() -> str:
         """
         Gets the cpu name so it would be sent to discord
         """
@@ -187,7 +189,7 @@ class YemenIPCCLogger:
 
         # Every log message goes to here, and only the errors and the criticals are picked up
         if record["level"].name == "ERROR" or record["level"].name == "CRITICAL":
-            message = record["message"]
+            # message = record["message"]
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             filename = record["file"].name
             lineno = record["line"]

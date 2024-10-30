@@ -1,7 +1,6 @@
 import tkinter as tk
 import re
 import asyncio
-from tkinter import messagebox
 from PIL import ImageTk
 from typing import Literal
 from time import sleep
@@ -13,6 +12,7 @@ from utils.gif_placer import AnimatedGIF
 from utils.logger_config_class import YemenIPCCLogger
 from database.db import DataBase
 from utils.images import Images
+from utils.messageboxes import MessageBox
 
 from handles.exit_handle import handleExit
 from arabic_tk.bidid import renderBiDiText
@@ -255,7 +255,7 @@ class LoginPage(tk.Frame):
         sleep(2)
 
         if not self.valid_username:
-            messagebox.showerror(
+            MessageBox().showerror(
                 "invalid username",
                 (
                     renderBiDiText("اسم المستخدم غير مدعوم")
@@ -267,7 +267,7 @@ class LoginPage(tk.Frame):
             return
 
         if not self.login_password_entry.get():
-            messagebox.showerror(
+            MessageBox().showerror(
                 "invalid password",
                 (
                     renderBiDiText("ضع كلمة السر")
@@ -286,7 +286,7 @@ class LoginPage(tk.Frame):
             )
 
             if response == "invalid credentials":
-                messagebox.showerror(
+                MessageBox().showerror(
                     "invalid credentials",
                     (
                         renderBiDiText("اسم المستخدم او كلمة السر غير صحيح")
@@ -295,7 +295,7 @@ class LoginPage(tk.Frame):
                     ),
                 )
             elif response == "please check you email to confirm your login":
-                messagebox.showerror(
+                MessageBox().showerror(
                     "confirm login",
                     (
                         renderBiDiText("يرجى التحقق من تسجيل الدخول، تفقد الإيميل")
@@ -304,7 +304,7 @@ class LoginPage(tk.Frame):
                     ),
                 )
             elif response == "please authenticate your account first":
-                if messagebox.askyesno(
+                if MessageBox().askyesno(
                     "authentication",
                     (
                         renderBiDiText(
@@ -318,7 +318,7 @@ class LoginPage(tk.Frame):
                         self.login_username_entry.get(), self.login_password_entry.get()
                     )
             elif response == "success":
-                messagebox.showinfo(
+                MessageBox().showinfo(
                     "success",
                     (
                         renderBiDiText("تم تسجيل الدخول")
@@ -333,7 +333,7 @@ class LoginPage(tk.Frame):
                 self.master.unbind_all("<Any-ButtonPress>")
 
             else:
-                messagebox.showerror(
+                MessageBox().showerror(
                     "error",
                     (
                         renderBiDiText("مشكله غير معروفه، يرجى المحاوله لاحقا")
@@ -346,7 +346,7 @@ class LoginPage(tk.Frame):
             logger.error(
                 f"An error occurred in the login, error: {e}, error stack: {getStack()}"
             )
-            messagebox.showerror(
+            MessageBox().showerror(
                 "server error",
                 (
                     renderBiDiText("مشكله غير معروفه، يرجى المحاوله لاحقا")
@@ -630,7 +630,7 @@ class SignupPage(tk.Frame):
             )
 
             if response == "email is used for another account":
-                messagebox.showerror(
+                MessageBox().showerror(
                     "used email",
                     (
                         renderBiDiText(
@@ -641,7 +641,7 @@ class SignupPage(tk.Frame):
                     ),
                 )
             elif response == "malformed email":
-                messagebox.showerror(
+                MessageBox().showerror(
                     "incorrect email",
                     (
                         renderBiDiText("إيميل غير مدعوم")
@@ -650,7 +650,7 @@ class SignupPage(tk.Frame):
                     ),
                 )
             elif response == "malformed username":
-                messagebox.showerror(
+                MessageBox().showerror(
                     "incorrect username",
                     (
                         renderBiDiText("اسم مستخدم غير مدعوم")
@@ -659,7 +659,7 @@ class SignupPage(tk.Frame):
                     ),
                 )
             elif response == "username is already reserved":
-                messagebox.showerror(
+                MessageBox().showerror(
                     "used username",
                     (
                         renderBiDiText(
@@ -670,7 +670,7 @@ class SignupPage(tk.Frame):
                     ),
                 )
             elif response == "You cannot create any more accounts":
-                messagebox.showerror(
+                MessageBox().showerror(
                     "no more account",
                     (
                         renderBiDiText(
@@ -682,7 +682,7 @@ class SignupPage(tk.Frame):
                 )
             elif response == "success":
                 self.master.show_frame("LoginPage")
-                messagebox.showinfo(
+                MessageBox().showinfo(
                     "success",
                     (
                         renderBiDiText("تم إنشاء الحساب بنجاح، تفقد الإيميل")
@@ -691,7 +691,7 @@ class SignupPage(tk.Frame):
                     ),
                 )
         else:
-            messagebox.showerror(
+            MessageBox().showerror(
                 "invalid signup",
                 (
                     renderBiDiText("يرجى وضع بيانات صحيحه")
@@ -717,7 +717,7 @@ class SignupPage(tk.Frame):
 
     def signupEmailRegex(self, e):
         if re.fullmatch(
-            r"^(?:[a-zA-Z0-9_-]+(?:(?:\.[a-zA-Z0-9_-]+)*))@(?P<domain_part>(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z0-9]{2,}(?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)$",
+            r"^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*@(?P<domain_part>(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z0-9]{2,}(?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)$",
             self.signup_email_entry.get(),
         ):
             self.email_circle.set_color("#29aa00")
@@ -736,7 +736,7 @@ class SignupPage(tk.Frame):
 
     def signupPasswordRegex(self, e):
         if re.fullmatch(
-            r"[a-zA-Z0-9!@#$%^&*()_\-?';~`:,\[\]\{\}]{5,}",
+            r"[a-zA-Z0-9!@#$%^&*()_\-?';~`:,\[\]{}]{5,}",
             self.signup_password_entry.get(),
         ):
             self.password_circle.set_color("#29aa00")

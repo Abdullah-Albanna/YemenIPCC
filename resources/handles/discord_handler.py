@@ -65,9 +65,8 @@ class DiscordHandler:
         # Basicly sends the specs only on the first error, if multiable erros then send from the second error and on, without sending the specs again
         if DictControl().get("sent_the_specs"):
             if (
-                DictControl().get("logged_selected_bundle") == self.selected_bundle
-                and DictControl().get("logged_selected_which_one")
-                == self.selected_container
+                DictControl().get("logged_selected_bundle") == self.selected_bundle and
+                DictControl().get("logged_selected_which_one") == self.selected_container
             ):
                 payload = {
                     "content": "",
@@ -141,7 +140,7 @@ class DiscordHandler:
                 error_message = str(e)
                 # Hides the webhook api url in case an error occurred
                 masked_error_message = re.sub(
-                    r"/api/webhooks/[^\s]+", "/api/webhooks/*****", error_message
+                    r"/api/webhooks/\S+", "/api/webhooks/*****", error_message
                 )
                 logger.warning(
                     f"An error occurred while sending message to Discord webhook: {masked_error_message}"
